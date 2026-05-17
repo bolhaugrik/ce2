@@ -34,6 +34,7 @@ export class BrowserRenderer {
   private resolved: ResolvedClip[] = []
   private activeSet = new Set<string>()
   private currentMomentId: string | null = null
+  private momentRanges: Array<{ id: string; start: number; end: number }> = []
   private fps: number
   private listeners = new Map<RendererEventType, Set<(...args: unknown[]) => void>>()
 
@@ -56,6 +57,14 @@ export class BrowserRenderer {
       assetDurations: opts.assetDurations,
     })
     this.resolved = resolver.resolve()
+
+    // Pre-compute moment frame ranges from the resolved anchor map
+    const anchorMap = resolver.getAnchors()
+    this.momentRanges = opts.composition.moments.map(m => ({
+      id: m.id,
+      start: anchorMap.get(`moment.${m.id}.start`) ?? 0,
+      end:   anchorMap.get(`moment.${m.id}.end`)   ?? 0,
+    }))
 
     // Resolve bundle inputs into clips
     const bundleResolver = new BundleResolver(opts.composition)
@@ -224,23 +233,10 @@ export class BrowserRenderer {
   }
 
   private currentMomentAtFrame(frame: number): string | null {
-    for (const moment of this.opts.composition.moments) {
-      const start = this.getAnchor(`moment.${moment.id}.start`)
-      const end   = this.getAnchor(`moment.${moment.id}.end`)
-      if (start !== undefined && end !== undefined && frame >= start && frame < end) {
-        return moment.id
-      }
+    for (const { id, start, end } of this.momentRanges) {
+      if (frame >= start && frame < end) return id
     }
     return null
-  }
-
-  private getAnchor(key: string): number | undefined {
-    // Re-resolve a single anchor from resolved clips (cheap lookup)
-    const startClip = this.resolved.find(r =>
-      r.moment_id !== null && key === `moment.${r.moment_id}.start`,
-    )
-    if (startClip) return startClip.start_frame
-    return undefined
   }
 
   private emit(event: RendererEventType, ...args: unknown[]): void {
