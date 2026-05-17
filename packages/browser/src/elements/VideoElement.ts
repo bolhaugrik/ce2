@@ -15,10 +15,15 @@ export class VideoElement extends BaseElement {
   }
 
   protected createElement(): HTMLElement {
-    const v = document.createElement('video')
-    v.style.cssText = 'width:100%;height:100%;object-fit:cover;'
+    const v   = document.createElement('video')
+    const src = this.resolved.clip.source
+    const scale = src.kind === 'asset' ? ((src as any).scale ?? 1) : 1
+    v.style.cssText = [
+      'width:100%;height:100%;object-fit:cover;',
+      scale !== 1 ? `transform:scale(${scale});` : '',
+    ].join('')
     v.playsInline = true
-    v.muted = this.resolved.clip.muted ?? false
+    v.muted       = this.resolved.clip.muted ?? true  // muted by default (autoplay policy)
     return v
   }
 

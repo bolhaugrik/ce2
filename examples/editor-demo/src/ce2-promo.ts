@@ -11,6 +11,7 @@ export const CE2_PROMO: CE2Composition = {
   schema_version: '2.0',
   meta: { width: 1080, height: 1920, fps: 30, title: 'CE2 — Build Once, Show Everywhere' },
   globals: { background_color: '#080810', base_music_volume: 0.25 },
+  audio_pool: [],  // ZAVA compatibility
 
   assets: [
     { id: 'bg_music', kind: 'audio', url: '/assets/bg_ambient.mp3', duration_sec: 60 },

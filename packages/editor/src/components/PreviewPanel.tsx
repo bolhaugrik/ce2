@@ -41,9 +41,11 @@ export function PreviewPanel() {
     // Restore position (small rebuild → same spot)
     if (prevTimeSec > 0) renderer.seekToSec(prevTimeSec)
 
-    // Restore play state
-    if (wasPlaying) { renderer.play(); setPlaying(true) }
-    else            { setPlaying(false) }
+    // First load: start paused (browser autoplay policy blocks audio otherwise)
+    // Subsequent rebuilds: restore previous play state
+    const isFirstLoad = prevTimeSec === 0 && !wasPlaying
+    if (!isFirstLoad && wasPlaying) { renderer.play(); setPlaying(true) }
+    else                            { setPlaying(false) }
 
     const unsubs = [
       renderer.on('play',          () => setPlaying(true)),

@@ -185,12 +185,15 @@ export const CE2CompositionSchema = z.object({
       base_voice_id: z.string().optional(),
       base_music_volume: z.number().min(0).max(2).optional(),
     })
+    .passthrough()
     .default({}),
   spanning_layers: z.array(ClipSchema).default([]),
   moments: z.array(MomentSchema).min(1),
   bundles: z.array(BundleInstanceSchema).default([]),
   assets: z.array(AssetRefSchema).default([]),
-})
+  // Optional ZAVA-compatibility fields — preserved but not required
+  audio_pool: z.array(z.record(z.unknown())).default([]).optional(),
+}).passthrough()  // preserve any extra fields from ZAVA or future versions
 
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
