@@ -487,6 +487,65 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
     )
   }
 
+  if (s.kind === 'computed') {
+    // Computed source: a bundle.inputs-okat szerkesztjük (countdown, stb.)
+    const bundle = clip.bundle_id ? composition?.bundles.find(b => b.id === clip.bundle_id) : undefined
+    if (!bundle || !onUpdateComposition) {
+      return (
+        <Section title={`↻ Computed (${s.logic_id})`}>
+          <div className="text-xs text-gray-500 italic">
+            Programozott source. Bundle nem található vagy nem szerkeszthető.
+          </div>
+          <Field label="Logic ID">
+            <TextInput value={s.logic_id} onChange={() => undefined} />
+          </Field>
+        </Section>
+      )
+    }
+    const updateInput = (key: string, value: unknown) => {
+      onUpdateComposition(comp => ({
+        ...comp,
+        bundles: comp.bundles.map(b => b.id === bundle.id ? { ...b, inputs: { ...b.inputs, [key]: value } } : b),
+      }))
+    }
+    return (
+      <Section title={`↻ ${bundle.kind} (computed)`}>
+        <div className="text-[11px] text-gray-500 italic mb-2">
+          Bundle: {bundle.id} · v{bundle.version}
+        </div>
+        {Object.entries(bundle.inputs).map(([key, value]) => {
+          const t = typeof value
+          if (t === 'number') {
+            return (
+              <Field key={key} label={key}>
+                <NumberInput value={value as number} onChange={(v) => updateInput(key, v)} step={1} />
+              </Field>
+            )
+          }
+          if (t === 'string' && (value as string).startsWith('#') && (value as string).length <= 9) {
+            return (
+              <Field key={key} label={key}>
+                <ColorInput value={value as string} onChange={(v) => updateInput(key, v)} />
+              </Field>
+            )
+          }
+          if (t === 'boolean') {
+            return (
+              <Field key={key} label={key}>
+                <Toggle label={key} value={value as boolean} onChange={(v) => updateInput(key, v)} />
+              </Field>
+            )
+          }
+          return (
+            <Field key={key} label={key}>
+              <TextInput value={String(value)} onChange={(v) => updateInput(key, v)} />
+            </Field>
+          )
+        })}
+      </Section>
+    )
+  }
+
   return (
     <div className="text-xs text-gray-500 p-3 italic">
       Source típus ({s.kind}) szerkesztője még nincs.

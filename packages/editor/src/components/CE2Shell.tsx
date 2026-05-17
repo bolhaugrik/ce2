@@ -136,16 +136,30 @@ export const CE2Shell: React.FC<Props> = ({
 
   const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }
 
-  // Jobb oszlop tartalma: Preview + MiniMap, VAGY JSON szerkesztő
-  const RightColumn = ({ width, showPreviewFull }: { width: string; showPreviewFull: boolean }) => (
+  // Jobb oszlop tartalma INLINE (NEM inner component — különben minden render remountolja
+  // a PreviewPanel-t, ami audio-t újraindítja, gombokat tönkreteszi)
+  const rightColumn = (width: string, showPreviewFull: boolean) => (
     <div style={{ ...col, width, background: viewMode === 'json' ? '#0f172a' : '#f3f4f6' }}>
       {viewMode === 'json' ? (
         <JsonEditorPanel composition={composition} onApply={setComposition} />
       ) : (
         <>
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <PreviewPanel composition={composition} fullScreen={showPreviewFull} onJumpToClip={onSelect} />
+          <div style={{
+            flexShrink: 0,
+            display: 'flex', justifyContent: 'center',
+            padding: showPreviewFull ? 0 : 8,
+            background: '#f3f4f6',
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: showPreviewFull ? '100%' : 240,
+              display: 'flex', flexDirection: 'column',
+              ...(showPreviewFull ? { flex: 1, minHeight: 0 } : {}),
+            }}>
+              <PreviewPanel composition={composition} fullScreen={showPreviewFull} onJumpToClip={onSelect} />
+            </div>
           </div>
+          {showPreviewFull && <div style={{ flex: 1, minHeight: 0 }} />}
           <div style={{ flexShrink: 0 }}>
             <MiniMap composition={composition} onJumpToClip={onSelect} />
           </div>
@@ -183,7 +197,7 @@ export const CE2Shell: React.FC<Props> = ({
               />
             </div>
           </div>
-          <RightColumn width="40%" showPreviewFull />
+          {rightColumn('40%', true)}
         </>
       ) : (
         /* DETAIL mód: 22% Kontextus + 56% Detail + 22% jobb oszlop */
@@ -203,7 +217,7 @@ export const CE2Shell: React.FC<Props> = ({
               onUpdateComposition={(updater) => setComposition(updater(composition))}
             />
           </div>
-          <RightColumn width="22%" showPreviewFull={false} />
+          {rightColumn('22%', false)}
         </>
       )}
     </div>

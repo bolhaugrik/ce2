@@ -10,6 +10,7 @@ import type { Selection, EditorMode, ViewMode } from './state/editorState.js'
 import { CE2Shell } from './components/CE2Shell.js'
 import { ModeSwitcher } from './components/ModeSwitcher.js'
 import { ValidationBadge } from './components/ValidationBadge.js'
+import { CatalogModal } from './components/CatalogModal.js'
 
 export interface CE2EditorProps {
   initialComposition: CE2Composition
@@ -35,6 +36,7 @@ export function CE2Editor({ initialComposition, onSave, style, className }: CE2E
   const [selection,   setSelection]   = useState<Selection>({ kind: 'none' })
   const [editorMode,  setEditorMode]  = useState<EditorMode>('komp')
   const [viewMode,    setViewMode]    = useState<ViewMode>('visual')
+  const [catalogOpen, setCatalogOpen] = useState(false)
 
   const detailEnabled = selection.kind !== 'none'
 
@@ -87,6 +89,14 @@ export function CE2Editor({ initialComposition, onSave, style, className }: CE2E
           ))}
         </div>
 
+        <button
+          onClick={() => setCatalogOpen(true)}
+          style={{ padding: '4px 12px', fontSize: 11, background: '#1e40af', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+          title="Új preset hozzáadása"
+        >
+          📚 Hozzáadás
+        </button>
+
         {onSave && (
           <button
             onClick={handleSave}
@@ -109,6 +119,22 @@ export function CE2Editor({ initialComposition, onSave, style, className }: CE2E
           viewMode={viewMode}
         />
       </div>
+
+      <CatalogModal
+        open={catalogOpen}
+        composition={composition}
+        selection={selection}
+        onClose={() => setCatalogOpen(false)}
+        onApply={(next, firstClipId) => {
+          setComposition(next)
+          if (firstClipId) {
+            // Find where the new clip landed and select it
+            const m = next.moments.find(m => m.layers.some(c => c.id === firstClipId))
+            if (m) setSelection({ kind: 'clip', moment_id: m.id, clip_id: firstClipId })
+            else if (next.spanning_layers.some(c => c.id === firstClipId)) setSelection({ kind: 'spanning', clip_id: firstClipId })
+          }
+        }}
+      />
     </div>
   )
 }
