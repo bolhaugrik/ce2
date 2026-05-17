@@ -136,39 +136,42 @@ export const CE2Shell: React.FC<Props> = ({
 
   const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }
 
-  // Jobb oszlop tartalma INLINE (NEM inner component — különben minden render remountolja
-  // a PreviewPanel-t, ami audio-t újraindítja, gombokat tönkreteszi)
+  // Jobb oszlop INLINE (NEM inner component — különben PreviewPanel remountolódik)
   const rightColumn = (width: string, showPreviewFull: boolean) => (
     <div style={{ ...col, width, background: viewMode === 'json' ? '#0f172a' : '#f3f4f6' }}>
       {viewMode === 'json' ? (
         <JsonEditorPanel composition={composition} onApply={setComposition} />
-      ) : (
+      ) : showPreviewFull ? (
+        /* Komp mód: preview kitölti a teljes magasságot */
         <>
-          <div style={{
-            flexShrink: 0,
-            display: 'flex', justifyContent: 'center',
-            padding: showPreviewFull ? 0 : 8,
-            background: '#f3f4f6',
-          }}>
-            <div style={{
-              width: '100%',
-              maxWidth: showPreviewFull ? '100%' : 240,
-              display: 'flex', flexDirection: 'column',
-              ...(showPreviewFull ? { flex: 1, minHeight: 0 } : {}),
-            }}>
-              <PreviewPanel composition={composition} fullScreen={showPreviewFull} onJumpToClip={onSelect} />
-            </div>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <PreviewPanel composition={composition} fullScreen onJumpToClip={onSelect} />
           </div>
-          {showPreviewFull && <div style={{ flex: 1, minHeight: 0 }} />}
           <div style={{ flexShrink: 0 }}>
             <MiniMap composition={composition} onJumpToClip={onSelect} />
           </div>
-          {!showPreviewFull && (
-            <div style={{ flex: 1, minHeight: 0, padding: '12px', fontSize: 11, color: '#6b7280', overflowY: 'auto' }}>
-              <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 700, marginBottom: 4, color: '#111827' }}>Tipp</div>
-              <p style={{ lineHeight: 1.5 }}>Detail mód: egy elemet szerkesztesz. Vissza → 📝 Komp.</p>
+        </>
+      ) : (
+        /* Detail mód: preview középre, nagyobb (max-width felhasználva) */
+        <>
+          <div style={{
+            flexShrink: 0,
+            padding: 10,
+            background: '#f3f4f6',
+            borderBottom: '1px solid #e5e7eb',
+            display: 'flex', justifyContent: 'center',
+          }}>
+            <div style={{ width: '100%', maxWidth: 360 }}>
+              <PreviewPanel composition={composition} fullScreen={false} onJumpToClip={onSelect} />
             </div>
-          )}
+          </div>
+          <div style={{ flexShrink: 0 }}>
+            <MiniMap composition={composition} onJumpToClip={onSelect} />
+          </div>
+          <div style={{ flex: 1, minHeight: 0, padding: 12, fontSize: 11, color: '#6b7280', overflowY: 'auto' }}>
+            <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 700, marginBottom: 4, color: '#111827' }}>Tipp</div>
+            <p style={{ lineHeight: 1.5 }}>Detail mód: egy elemet szerkesztesz. Vissza → 📝 Komp.</p>
+          </div>
         </>
       )}
     </div>

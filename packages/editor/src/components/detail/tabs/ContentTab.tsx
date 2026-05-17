@@ -7,6 +7,7 @@
 import React from 'react'
 import type { Clip, ClipSource, CE2Composition } from '@ce2/core'
 import { Field, TextInput, NumberInput, ColorInput, SelectInput, Section, Toggle } from '../../primitives.js'
+import { isPositionValue } from '../PositionPicker.js'
 
 interface Props {
   clip: Clip
@@ -508,41 +509,63 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
         bundles: comp.bundles.map(b => b.id === bundle.id ? { ...b, inputs: { ...b.inputs, [key]: value } } : b),
       }))
     }
+
+    // Position default ha még nincs definiálva
+    const currentPos = isPositionValue(bundle.inputs.position) ? bundle.inputs.position : undefined
+
     return (
-      <Section title={`↻ ${bundle.kind} (computed)`}>
-        <div className="text-[11px] text-gray-500 italic mb-2">
-          Bundle: {bundle.id} · v{bundle.version}
-        </div>
-        {Object.entries(bundle.inputs).map(([key, value]) => {
-          const t = typeof value
-          if (t === 'number') {
+      <>
+        <Section title={`↻ ${bundle.kind} (computed)`}>
+          <div className="text-[11px] text-gray-500 italic mb-2">
+            Bundle: {bundle.id} · v{bundle.version}
+          </div>
+          {Object.entries(bundle.inputs).map(([key, value]) => {
+            if (key === 'position') return null   // külön Section-ben kezeljük
+            const t = typeof value
+            if (isPositionValue(value)) {
+              // (egyéb position-kulcs is, pl. anchor_position)
+              return (
+                <Field key={key} label={key}>
+                  <PositionPicker value={value} onChange={(v) => updateInput(key, v)} />
+                </Field>
+              )
+            }
+            if (t === 'number') {
+              return (
+                <Field key={key} label={key}>
+                  <NumberInput value={value as number} onChange={(v) => updateInput(key, v)} step={1} />
+                </Field>
+              )
+            }
+            if (t === 'string' && (value as string).startsWith('#') && (value as string).length <= 9) {
+              return (
+                <Field key={key} label={key}>
+                  <ColorInput value={value as string} onChange={(v) => updateInput(key, v)} />
+                </Field>
+              )
+            }
+            if (t === 'boolean') {
+              return (
+                <Field key={key} label={key}>
+                  <Toggle label={key} value={value as boolean} onChange={(v) => updateInput(key, v)} />
+                </Field>
+              )
+            }
             return (
               <Field key={key} label={key}>
-                <NumberInput value={value as number} onChange={(v) => updateInput(key, v)} step={1} />
+                <TextInput value={String(value)} onChange={(v) => updateInput(key, v)} />
               </Field>
             )
-          }
-          if (t === 'string' && (value as string).startsWith('#') && (value as string).length <= 9) {
-            return (
-              <Field key={key} label={key}>
-                <ColorInput value={value as string} onChange={(v) => updateInput(key, v)} />
-              </Field>
-            )
-          }
-          if (t === 'boolean') {
-            return (
-              <Field key={key} label={key}>
-                <Toggle label={key} value={value as boolean} onChange={(v) => updateInput(key, v)} />
-              </Field>
-            )
-          }
-          return (
-            <Field key={key} label={key}>
-              <TextInput value={String(value)} onChange={(v) => updateInput(key, v)} />
-            </Field>
-          )
-        })}
-      </Section>
+          })}
+        </Section>
+
+        <Section title="Pozíció (bundle)">
+          <PositionPicker
+            value={currentPos}
+            onChange={(v) => updateInput('position', v)}
+          />
+        </Section>
+      </>
     )
   }
 
