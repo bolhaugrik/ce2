@@ -22,6 +22,7 @@ import { PreviewPanel } from './panels/PreviewPanel.js'
 import { ContextRail } from './panels/ContextRail.js'
 import { NowStrip } from './timeline/NowStrip.js'
 import { MiniMap } from './timeline/MiniMap.js'
+import { JsonEditorPanel } from './JsonEditorPanel.js'
 
 interface Props {
   composition: CE2Composition
@@ -30,6 +31,7 @@ interface Props {
   onSelect: (sel: Selection) => void
   editorMode: EditorMode
   onEditorMode: (m: EditorMode) => void
+  viewMode?: 'visual' | 'json'
 }
 
 export const CE2Shell: React.FC<Props> = ({
@@ -38,6 +40,7 @@ export const CE2Shell: React.FC<Props> = ({
   selection,
   onSelect,
   editorMode,
+  viewMode = 'visual',
   onEditorMode,
 }) => {
   /* Auto mode-switch: kiválasztáskor Komp → Detail */
@@ -133,10 +136,34 @@ export const CE2Shell: React.FC<Props> = ({
 
   const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }
 
+  // Jobb oszlop tartalma: Preview + MiniMap, VAGY JSON szerkesztő
+  const RightColumn = ({ width, showPreviewFull }: { width: string; showPreviewFull: boolean }) => (
+    <div style={{ ...col, width, background: viewMode === 'json' ? '#0f172a' : '#f3f4f6' }}>
+      {viewMode === 'json' ? (
+        <JsonEditorPanel composition={composition} onApply={setComposition} />
+      ) : (
+        <>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <PreviewPanel composition={composition} fullScreen={showPreviewFull} onJumpToClip={onSelect} />
+          </div>
+          <div style={{ flexShrink: 0 }}>
+            <MiniMap composition={composition} onJumpToClip={onSelect} />
+          </div>
+          {!showPreviewFull && (
+            <div style={{ flex: 1, minHeight: 0, padding: '12px', fontSize: 11, color: '#6b7280', overflowY: 'auto' }}>
+              <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 700, marginBottom: 4, color: '#111827' }}>Tipp</div>
+              <p style={{ lineHeight: 1.5 }}>Detail mód: egy elemet szerkesztesz. Vissza → 📝 Komp.</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%' }}>
       {editorMode === 'komp' ? (
-        /* KOMP mód: 60% Vászon + 40% Preview/MiniMap */
+        /* KOMP mód: 60% Vászon + 40% jobb oszlop */
         <>
           <div style={{ ...col, width: '60%', background: '#fff', borderRight: '1px solid #e5e7eb' }}>
             <div style={{ flexShrink: 0 }}>
@@ -156,17 +183,10 @@ export const CE2Shell: React.FC<Props> = ({
               />
             </div>
           </div>
-          <div style={{ ...col, width: '40%', background: '#f3f4f6' }}>
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#f3f4f6' }}>
-              <PreviewPanel composition={composition} fullScreen onJumpToClip={onSelect} />
-            </div>
-            <div style={{ flexShrink: 0 }}>
-              <MiniMap composition={composition} onJumpToClip={onSelect} />
-            </div>
-          </div>
+          <RightColumn width="40%" showPreviewFull />
         </>
       ) : (
-        /* DETAIL mód: 22% Kontextus + 56% Detail + 22% Preview kicsi */
+        /* DETAIL mód: 22% Kontextus + 56% Detail + 22% jobb oszlop */
         <>
           <div style={{ ...col, width: '22%', background: '#fff', borderRight: '1px solid #e5e7eb' }}>
             <ContextRail composition={composition} selection={selection} onSelect={onSelect} />
@@ -183,20 +203,7 @@ export const CE2Shell: React.FC<Props> = ({
               onUpdateComposition={(updater) => setComposition(updater(composition))}
             />
           </div>
-          <div style={{ ...col, width: '22%', background: '#f3f4f6' }}>
-            <div style={{ flexShrink: 0 }}>
-              <PreviewPanel composition={composition} onJumpToClip={onSelect} />
-            </div>
-            <div style={{ flexShrink: 0 }}>
-              <MiniMap composition={composition} onJumpToClip={onSelect} />
-            </div>
-            <div style={{ flex: 1, minHeight: 0, padding: '12px', fontSize: 11, color: '#6b7280', overflowY: 'auto' }}>
-              <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 700, marginBottom: 4, color: '#111827' }}>Tipp</div>
-              <p style={{ lineHeight: 1.5 }}>
-                Detail módban szerkesztesz egy elemet. Vissza a Komp módba: kattints a 📝 Komp gombra.
-              </p>
-            </div>
-          </div>
+          <RightColumn width="22%" showPreviewFull={false} />
         </>
       )}
     </div>

@@ -2,28 +2,28 @@ const STYLE_ID = 'ce2-browser-styles'
 
 const CSS = `
 @keyframes ce2-float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(calc(var(--ce2-float-amp, 6) * 1px)); }
+  0%, 100% { translate: 0 0px; }
+  50%       { translate: 0 calc(var(--ce2-float-amp, 6) * 1px); }
 }
 @keyframes ce2-float-x {
-  0%, 100% { transform: translateX(0px); }
-  50%       { transform: translateX(calc(var(--ce2-float-amp, 6) * 1px)); }
+  0%, 100% { translate: 0px 0; }
+  50%       { translate: calc(var(--ce2-float-amp, 6) * 1px) 0; }
 }
 @keyframes ce2-float-both {
-  0%, 100% { transform: translate(0px, 0px); }
-  25%      { transform: translate(calc(var(--ce2-float-amp, 6) * 0.7px), calc(var(--ce2-float-amp, 6) * -1px)); }
-  75%      { transform: translate(calc(var(--ce2-float-amp, 6) * -0.7px), calc(var(--ce2-float-amp, 6) * 1px)); }
+  0%, 100% { translate: 0px 0px; }
+  25%      { translate: calc(var(--ce2-float-amp, 6) * 0.7px) calc(var(--ce2-float-amp, 6) * -1px); }
+  75%      { translate: calc(var(--ce2-float-amp, 6) * -0.7px) calc(var(--ce2-float-amp, 6) * 1px); }
 }
 @keyframes ce2-pulse {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(var(--ce2-pulse-max, 1.08)); }
+  0%, 100% { scale: 1; }
+  50%       { scale: var(--ce2-pulse-max, 1.08); }
 }
 @keyframes ce2-shake {
-  0%, 100% { transform: translateX(0); }
-  20%       { transform: translateX(calc(var(--ce2-shake-amp, 5) * -1px)); }
-  40%       { transform: translateX(calc(var(--ce2-shake-amp, 5) * 1px)); }
-  60%       { transform: translateX(calc(var(--ce2-shake-amp, 5) * -0.6px)); }
-  80%       { transform: translateX(calc(var(--ce2-shake-amp, 5) * 0.4px)); }
+  0%, 100% { translate: 0 0; }
+  20%       { translate: calc(var(--ce2-shake-amp, 5) * -1px) 0; }
+  40%       { translate: calc(var(--ce2-shake-amp, 5) * 1px) 0; }
+  60%       { translate: calc(var(--ce2-shake-amp, 5) * -0.6px) 0; }
+  80%       { translate: calc(var(--ce2-shake-amp, 5) * 0.4px) 0; }
 }
 @keyframes ce2-fade-in {
   from { opacity: 0; }

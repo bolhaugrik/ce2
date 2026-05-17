@@ -1,8 +1,9 @@
 /**
- * CE2 — PreviewPanel.
+ * CE2 — PreviewPanel (BrowserRenderer-alapú).
  *
- * BrowserRenderer-alapú preview panel.
- * PauseLabelsOverlay és AudioActivePanel overlay-ekkel.
+ * A containerRef div megbízható méretét ResizeObserver biztosítja a wrapperRef-en:
+ * a wrapper mérete mindig explicit px-ben van beállítva a containerRef-en,
+ * így clientHeight != 0 még a flex layout esetén is.
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { BrowserRenderer } from '@ce2/browser'
@@ -18,13 +19,29 @@ interface Props {
 }
 
 export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullScreen }) => {
-  const containerRef  = useRef<HTMLDivElement>(null)
+  const wrapperRef    = useRef<HTMLDivElement>(null)   // tracks actual size
+  const containerRef  = useRef<HTMLDivElement>(null)   // BrowserRenderer container
   const rendererRef   = useRef<BrowserRenderer | null>(null)
   const [playing,  setPlaying]  = useState(false)
   const [timeSec,  setTimeSec]  = useState(0)
   const [totalSec, setTotalSec] = useState(1)
 
-  // Build renderer on composition change
+  // Sync wrapperRef → explicit px size on containerRef + refit
+  useEffect(() => {
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+    const obs = new ResizeObserver(([entry]) => {
+      if (!containerRef.current) return
+      const { width, height } = entry.contentRect
+      containerRef.current.style.width  = `${width}px`
+      containerRef.current.style.height = `${height}px`
+      rendererRef.current?.refit()
+    })
+    obs.observe(wrapper)
+    return () => obs.disconnect()
+  }, [])
+
+  // Build/rebuild renderer on composition change
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -41,10 +58,10 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
     let renderer: BrowserRenderer
     try {
       renderer = new BrowserRenderer({
-        container: containerRef.current,
+        container:    containerRef.current,
         composition,
-        assets: assetMap,
-        loop: true,
+        assets:       assetMap,
+        loop:         true,
         fitContainer: true,
       })
     } catch { return }
@@ -54,9 +71,6 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
     setTotalSec(renderer.totalTimeSec)
 
     if (prevTimeSec > 0) renderer.seekToSec(prevTimeSec)
-
-    // After first render, refit once layout has settled — fixes clientHeight=0 at construction time
-    requestAnimationFrame(() => { renderer.refit() })
 
     const isFirstLoad = prevTimeSec === 0 && !wasPlaying
     if (!isFirstLoad && wasPlaying) { renderer.play(); setPlaying(true) }
@@ -76,16 +90,7 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
     }
   }, [composition])
 
-  // ResizeObserver → refit
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const obs = new ResizeObserver(() => rendererRef.current?.refit())
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-
-  // Progress tick (RAF loop)
+  // Progress tick
   const rafRef = useRef<number>()
   useEffect(() => {
     const tick = () => {
@@ -102,7 +107,6 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
     else             { r.play();  setPlaying(true) }
   }
 
-  // Scrubbing
   const scrubbingRef  = useRef(false)
   const progressElRef = useRef<HTMLDivElement>(null)
 
@@ -128,27 +132,26 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
   }
 
   const pct = totalSec > 0 ? Math.min((timeSec / totalSec) * 100, 100) : 0
-
   const { width: cw, height: ch } = composition.meta
-
-  // Small preview (detail mode) → fixed aspect ratio
-  const smallStyle: React.CSSProperties = {
-    width: '100%',
-    aspectRatio: `${cw}/${ch}`,
-    maxHeight: '30vh',
-  }
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', background: '#000',
       width: '100%',
-      ...(fullScreen ? { flex: 1, minHeight: 0 } : smallStyle),
+      ...(fullScreen
+        ? { flex: 1, minHeight: 0 }
+        : { aspectRatio: `${cw}/${ch}` }),
     }}>
-      {/* containerRef → flex-1 div; clientHeight = flex-computed (not 0) */}
+      {/* wrapperRef: tracks actual pixel dimensions via ResizeObserver */}
       <div
-        ref={containerRef}
-        style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
+        ref={wrapperRef}
+        style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}
       >
+        {/* containerRef: explicit px size set by ResizeObserver → clientHeight != 0 */}
+        <div
+          ref={containerRef}
+          style={{ position: 'absolute', top: 0, left: 0 }}
+        />
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
           <PauseLabelsOverlay composition={composition} onJumpToClip={onJumpToClip} />
         </div>
@@ -166,16 +169,10 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
           <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#fff', borderRadius: 3, width: `${pct}%` }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button
-            onClick={togglePlay}
-            style={{ padding: '2px 8px', fontSize: 11, background: '#fff', color: '#111', borderRadius: 3, border: 'none', cursor: 'pointer', fontWeight: 700 }}
-          >
+          <button onClick={togglePlay} style={{ padding: '2px 8px', fontSize: 11, background: '#fff', color: '#111', borderRadius: 3, border: 'none', cursor: 'pointer', fontWeight: 700 }}>
             {playing ? '⏸' : '▶'}
           </button>
-          <button
-            onClick={() => { rendererRef.current?.stop(); setPlaying(false) }}
-            style={{ padding: '2px 8px', fontSize: 11, background: '#374151', color: '#fff', borderRadius: 3, border: 'none', cursor: 'pointer' }}
-          >
+          <button onClick={() => { rendererRef.current?.stop(); setPlaying(false) }} style={{ padding: '2px 8px', fontSize: 11, background: '#374151', color: '#fff', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
             ■
           </button>
           <span style={{ fontSize: 10, color: '#9ca3af', fontFamily: 'monospace', marginLeft: 4 }}>
