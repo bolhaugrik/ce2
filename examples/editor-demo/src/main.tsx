@@ -3,8 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { CE2Editor } from '@ce2/editor'
 import type { CE2Composition } from '@ce2/core'
 
-// Import editor styles
-import '../../packages/editor/src/styles/editor.css'
+import '@ce2/editor/styles'
 
 const initialComposition: CE2Composition = {
   schema_version: '2.0',

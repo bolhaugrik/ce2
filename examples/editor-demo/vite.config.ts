@@ -6,9 +6,10 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@ce2/core':    resolve(__dirname, '../../packages/core/src/index.ts'),
-      '@ce2/browser': resolve(__dirname, '../../packages/browser/src/index.ts'),
-      '@ce2/editor':  resolve(__dirname, '../../packages/editor/src/index.ts'),
+      '@ce2/core':          resolve(__dirname, '../../packages/core/src/index.ts'),
+      '@ce2/browser':       resolve(__dirname, '../../packages/browser/src/index.ts'),
+      '@ce2/editor':        resolve(__dirname, '../../packages/editor/src/index.ts'),
+      '@ce2/editor/styles': resolve(__dirname, '../../packages/editor/src/styles/editor.css'),
     },
   },
 })
