@@ -4,17 +4,20 @@ import { useEditorStore } from '../store/useEditorStore.js'
 
 export function PreviewPanel() {
   const { composition } = useEditorStore()
-  const containerRef   = useRef<HTMLDivElement>(null)
-  const rendererRef    = useRef<BrowserRenderer | null>(null)
-  const keepPlayingRef = useRef(true)   // survives renderer rebuilds
+  const containerRef = useRef<HTMLDivElement>(null)
+  const rendererRef  = useRef<BrowserRenderer | null>(null)
   const [playing,  setPlaying]  = useState(false)
   const [timeSec,  setTimeSec]  = useState(0)
   const [totalSec, setTotalSec] = useState(1)
   const [momentId, setMomentId] = useState<string | null>(null)
 
-  // Rebuild renderer on composition change
+  // Rebuild renderer on composition change — preserves play/pause state and position
   useEffect(() => {
     if (!containerRef.current) return
+
+    // Snapshot state before destroying
+    const prevTimeSec  = rendererRef.current?.currentTimeSec ?? 0
+    const wasPlaying   = rendererRef.current?.isPlaying      ?? true  // auto-play on first load only
     rendererRef.current?.destroy()
 
     let renderer: BrowserRenderer
@@ -28,14 +31,6 @@ export function PreviewPanel() {
     } catch { return }
 
     rendererRef.current = renderer
-    setTimeSec(0)
-
-    const unsubs = [
-      renderer.on('play',          () => setPlaying(true)),
-      renderer.on('pause',         () => setPlaying(false)),
-      renderer.on('stop',          () => { setPlaying(false); setTimeSec(0) }),
-      renderer.on('moment-change', (id) => setMomentId(id as string)),
-    ]
 
     const allClips = [...composition.spanning_layers, ...composition.moments.flatMap(m => m.layers)]
     const est = allClips.reduce((mx, c) =>
@@ -43,10 +38,19 @@ export function PreviewPanel() {
     setTotalSec(Math.max(est, 3))
     setMomentId(composition.moments[0]?.id ?? null)
 
-    if (keepPlayingRef.current) {
-      renderer.play()
-      setPlaying(true)
-    }
+    // Restore position (small rebuild → same spot)
+    if (prevTimeSec > 0) renderer.seekToSec(prevTimeSec)
+
+    // Restore play state
+    if (wasPlaying) { renderer.play(); setPlaying(true) }
+    else            { setPlaying(false) }
+
+    const unsubs = [
+      renderer.on('play',          () => setPlaying(true)),
+      renderer.on('pause',         () => setPlaying(false)),
+      renderer.on('stop',          () => { setPlaying(false); setTimeSec(0) }),
+      renderer.on('moment-change', (id) => setMomentId(id as string)),
+    ]
 
     return () => { unsubs.forEach(u => u()); renderer.destroy(); rendererRef.current = null }
   }, [composition])
@@ -73,8 +77,8 @@ export function PreviewPanel() {
 
   const togglePlay = () => {
     const r = rendererRef.current; if (!r) return
-    if (r.isPlaying) { r.pause(); setPlaying(false); keepPlayingRef.current = false }
-    else             { r.play();  setPlaying(true);  keepPlayingRef.current = true  }
+    if (r.isPlaying) { r.pause(); setPlaying(false) }
+    else             { r.play();  setPlaying(true) }
   }
 
   // ── Scrubbing ────────────────────────────────────────────────────────────
