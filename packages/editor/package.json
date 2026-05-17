@@ -1,0 +1,42 @@
+{
+  "name": "@ce2/editor",
+  "version": "0.3.0",
+  "description": "CE2 reference editor — embeddable React component",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types":   "./dist/index.d.ts",
+      "import":  "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./styles": "./dist/editor.css"
+  },
+  "main":   "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types":  "./dist/index.d.ts",
+  "files":  ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev":   "tsup --watch",
+    "test":  "vitest run"
+  },
+  "dependencies": {
+    "@ce2/core":    "workspace:*",
+    "@ce2/browser": "workspace:*",
+    "zustand": "^4.5.2",
+    "immer":   "^10.1.1"
+  },
+  "peerDependencies": {
+    "react":     ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react":     "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "react":            "^18.3.0",
+    "react-dom":        "^18.3.0",
+    "typescript":       "^5.4.5",
+    "tsup":             "^8.0.2",
+    "vitest":           "^1.6.0"
+  }
+}
