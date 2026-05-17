@@ -439,9 +439,15 @@ export function DetailPanel() {
   return (
     <>
       <div className="ce2-panel__header">
-        {clip.source.kind === 'text'
-          ? (clip.source.payload.content.slice(0, 18) || 'Text clip')
-          : clip.label || clip.id}
+        <span style={{ marginRight: 6 }}>
+          {clip.layer === 'vector' ? '✏️' : clip.layer === 'video' ? '📹' :
+           clip.layer === 'pixel'  ? '🖼'  : clip.layer === 'music' ? '🎵' :
+           clip.layer === 'narration' ? '🎤' : '🔊'}
+        </span>
+        {clip.label || clip.id}
+        <span style={{ marginLeft: 6, color: 'var(--ed-text3)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+          {clip.source.kind}
+        </span>
       </div>
       <div className="ce2-tabs">
         {(['content','timing','effects','general'] as Tab[]).map(t => (

@@ -174,10 +174,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  gap: 10px;
   height: 100%;
-  padding: 12px;
+  width: 100%;
+  padding: 12px 12px 10px;
+  overflow: hidden;
 }
 .ce2-preview__canvas-wrap {
   flex: 1;
@@ -186,6 +187,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  overflow: hidden;
 }
 .ce2-preview__player {
   border-radius: 10px;
