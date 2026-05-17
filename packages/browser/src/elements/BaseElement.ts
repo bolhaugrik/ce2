@@ -91,6 +91,9 @@ export abstract class BaseElement {
             this.el.style.filter = `blur(${effect['to_px'] ?? 0}px)`
           })
           break
+        case 'blur.gaussian':
+          this.el.style.filter = `blur(${effect['radius_px'] ?? 4}px)`
+          break
         case 'visual.color_correction':
           this.el.style.filter = [
             effect['brightness'] ? `brightness(${effect['brightness']})` : '',
@@ -98,10 +101,17 @@ export abstract class BaseElement {
             effect['saturation'] ? `saturate(${effect['saturation']})` : '',
           ].filter(Boolean).join(' ')
           break
-        case 'text.neon':
+        case 'text.neon': {
+          const neonColor = (effect['color'] ?? effect['glow_color'] ?? '#fff') as string
+          const neonSize  = (effect['glow_size_px'] as number | undefined) ?? 20
+          const neonInt   = (effect['intensity'] as number | undefined) ?? 1
           this.el.style.textShadow =
-            `0 0 ${8 * (effect['intensity'] as number ?? 1)}px ${effect['color'] ?? '#fff'},` +
-            `0 0 ${20 * (effect['intensity'] as number ?? 1)}px ${effect['color'] ?? '#fff'}`
+            `0 0 ${neonSize * 0.4 * neonInt}px ${neonColor},` +
+            `0 0 ${neonSize * neonInt}px ${neonColor},` +
+            `0 0 ${neonSize * 2 * neonInt}px ${neonColor}`
+          break
+        }
+        case 'text.neon_dummy': // fallthrough prevention
           if (effect['flicker']) {
             this.el.style.animation = `ce2-pulse 0.15s ease-in-out infinite alternate`
           }
@@ -109,16 +119,26 @@ export abstract class BaseElement {
         case 'text.shadow':
           this.el.style.textShadow =
             `${effect['offset_x'] ?? 2}px ${effect['offset_y'] ?? 2}px ` +
-            `${effect['blur'] ?? 4}px ${effect['color'] ?? 'rgba(0,0,0,0.5)'}`
+            `${(effect['blur'] ?? effect['blur_px'] ?? 4)}px ${effect['color'] ?? 'rgba(0,0,0,0.5)'}`
           break
       }
     }
   }
 
   protected applyTransition(t: Transition, dir: 'in' | 'out', fps: number): void {
-    const dur = t.duration_sec ?? 0.4
+    const dur    = t.duration_sec ?? 0.4
     const easing = easingToCss(t.easing as string | undefined)
-    const dist = t['distance_px'] ?? 60
+    const dist   = t['distance_px'] ?? 60
+
+    // ZAVA: {kind:'slide', from:'left'|'right'|'top'|'bottom'} → OSS kind
+    let kind = t.kind
+    if (kind === 'slide' && t['from']) {
+      const MAP: Record<string, string> = {
+        left: 'slide_left', right: 'slide_right',
+        top:  'slide_down', bottom: 'slide_up',
+      }
+      kind = MAP[t['from'] as string] ?? 'slide_left'
+    }
 
     const animMap: Record<string, Record<'in' | 'out', string>> = {
       fade:        { in: 'ce2-fade-in',       out: 'ce2-fade-out' },
@@ -130,9 +150,10 @@ export abstract class BaseElement {
       zoom_out:    { in: 'ce2-zoom-in',       out: 'ce2-zoom-out' },
       blur_in:     { in: 'ce2-blur-in',       out: 'ce2-blur-out' },
       blur_out:    { in: 'ce2-blur-in',       out: 'ce2-blur-out' },
+      fade_to_black:{ in: 'ce2-fade-in',      out: 'ce2-fade-out' },
     }
 
-    const animName = animMap[t.kind]?.[dir]
+    const animName = animMap[kind]?.[dir]
     if (!animName) return
 
     this.el.style.setProperty('--ce2-slide-dist', String(dist))
