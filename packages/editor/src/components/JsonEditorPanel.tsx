@@ -33,6 +33,7 @@ export function JsonEditorPanel({ composition, onApply }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
   const prevRef     = useRef(composition)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const preRef      = useRef<HTMLPreElement>(null)
 
   // Sync when composition changes externally
   useEffect(() => {
@@ -127,6 +128,7 @@ export function JsonEditorPanel({ composition, onApply }: Props) {
       <div style={S.body}>
         {/* Highlight layer (read-only, below) */}
         <pre
+          ref={preRef}
           style={S.pre}
           dangerouslySetInnerHTML={{ __html: highlighted }}
         />
@@ -137,6 +139,13 @@ export function JsonEditorPanel({ composition, onApply }: Props) {
           value={text}
           onChange={e => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onScroll={(e) => {
+            // Sync highlight overlay scroll with textarea scroll
+            if (preRef.current) {
+              preRef.current.scrollTop  = e.currentTarget.scrollTop
+              preRef.current.scrollLeft = e.currentTarget.scrollLeft
+            }
+          }}
           spellCheck={false}
           autoComplete="off"
         />

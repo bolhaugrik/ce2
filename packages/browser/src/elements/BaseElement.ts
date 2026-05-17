@@ -66,6 +66,8 @@ export abstract class BaseElement {
 
   /** Cached: static base opacity from clip definition */
   private baseOpacity: number
+  /** Statikus filter rész (color correction, grayscale, stb.) — applyFrameStyle hozzáadja */
+  private _staticFilter = ''
 
   constructor(resolved: ResolvedClip) {
     this.resolved = resolved
@@ -99,6 +101,7 @@ export abstract class BaseElement {
     const remain   = Math.max(0, dur - elapsed)
 
     const style = newFrameStyle(this.baseOpacity)
+    style.filterExtra = this._staticFilter
 
     // 1) Effects (continuous — float/pulse/shake) + static (blur/color filters)
     for (const eff of this.attachedEffects) {
@@ -335,8 +338,8 @@ export abstract class BaseElement {
         }
       }
     }
-    // Static filter base (dynamic blur is added per-frame)
-    if (cssFilter.trim()) this.el.dataset.staticFilter = cssFilter.trim()
+    // Static filter base (dynamic blur is added per-frame in computeFrameStyle)
+    this._staticFilter = cssFilter.trim()
   }
 
   /** Called once when the clip first becomes visible — nincs hatása a frame-renderre. */
@@ -346,6 +349,12 @@ export abstract class BaseElement {
 
   show(): void { this.el.classList.remove('ce2-clip--hidden') }
   hide(): void { this.el.classList.add('ce2-clip--hidden') }
+
+  /** Cleanup hook — BrowserRenderer.destroy() hívja minden elementen */
+  destroy(): void {}
+
+  /** Mute audio/video — alapból no-op; AudioElement / VideoElement override-olja */
+  setMuted(_muted: boolean): void {}
 
   /** A frame-alapú rendszerben a JS pause-ja megáll, így a CSS animation-play-state nem kell. */
   syncAnimationState(_playing: boolean): void { /* no-op */ }

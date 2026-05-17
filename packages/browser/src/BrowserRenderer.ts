@@ -142,9 +142,15 @@ export class BrowserRenderer {
 
   destroy(): void {
     this.pauseAllMedia()
+    for (const el of this.elements) el.destroy()
     this.engine.destroy()
     this.canvas.remove()
     this.listeners.clear()
+  }
+
+  /** Mute/unmute minden audio/video clipet — preview kontrollra */
+  setMuted(muted: boolean): void {
+    for (const el of this.elements) el.setMuted(muted)
   }
 
   // ─── Media control ──────────────────────────────────────────────────────────
@@ -156,6 +162,9 @@ export class BrowserRenderer {
       if (audio?.src) audio.play().catch(() => {})
       const video = (el as any).video as HTMLVideoElement | undefined
       if (video?.src) video.play().catch(() => {})
+      // TTS: speakTts() metódus (user gesture context-ben)
+      const speakTts = (el as any).speakTts as (() => void) | undefined
+      if (speakTts) speakTts()
     }
   }
 

@@ -7,7 +7,6 @@ export class AudioElement extends BaseElement {
   private fps: number
   private trimIn: number
   private isTts: boolean
-  private _unlockCleanup: (() => void) | null = null
 
   constructor(resolved: ResolvedClip, fps: number) {
     super(resolved)
@@ -24,9 +23,7 @@ export class AudioElement extends BaseElement {
   }
 
   protected createElement(): HTMLElement {
-    if (this.isTts) {
-      return document.createElement('span') // invisible placeholder
-    }
+    if (this.isTts) return document.createElement('span')
     const a = document.createElement('audio')
     const c = this.resolved.clip
     a.preload = 'auto'
@@ -43,10 +40,6 @@ export class AudioElement extends BaseElement {
     const utt = new SpeechSynthesisUtterance(src.text)
     if (src.lang) utt.lang = src.lang
     utt.volume = Math.min(this.resolved.clip.volume ?? 1, 1)
-    // Try to match voice
-    const voices = window.speechSynthesis.getVoices()
-    const match  = voices.find(v => src.lang ? v.lang.startsWith(src.lang) : v.default)
-    if (match) utt.voice = match
     this.ttsUtterance = utt
   }
 
@@ -56,46 +49,32 @@ export class AudioElement extends BaseElement {
     this.audio.load()
   }
 
+  /**
+   * onEnter NEM játszik le automatikusan — csak pozicionál.
+   * A tényleges play() a BrowserRenderer.play() → resumeActiveMedia() hívja,
+   * ami user gesture kontextusban (▶ gomb click) történik.
+   * Ez megakadályozza az "automágikus" hang-start dokumentum click-re.
+   */
   onEnter(_fps: number): void {
-    if (this.isTts) {
-      if (!this.ttsUtterance) return
-      window.speechSynthesis?.cancel()
-      // Re-create utterance each time (browser clears it after speak)
-      const src = this.resolved.clip.source
-      if (src.kind !== 'tts') return
-      const utt = new SpeechSynthesisUtterance(src.text)
-      if (src.lang) utt.lang = src.lang
-      utt.volume = Math.min(this.resolved.clip.volume ?? 1, 1)
-      const voices = window.speechSynthesis?.getVoices() ?? []
-      const match  = voices.find(v => src.lang ? v.lang.startsWith(src.lang) : v.default)
-      if (match) utt.voice = match
-      window.speechSynthesis?.speak(utt)
-      return
-    }
+    if (this.isTts) return
     if (!this.audio?.src) return
     this.audio.currentTime = this.trimIn
-    // Cancel any stale unlock listener before registering a new one
-    this._unlockCleanup?.()
-    this._unlockCleanup = null
-    this.audio.play().catch(() => {
-      const unlock = () => {
-        this._unlockCleanup = null
-        this.audio?.play().catch(() => {})
-      }
-      document.addEventListener('click',   unlock, { once: true })
-      document.addEventListener('keydown', unlock, { once: true })
-      this._unlockCleanup = () => {
-        document.removeEventListener('click',   unlock)
-        document.removeEventListener('keydown', unlock)
-      }
-    })
+  }
+
+  /** TTS-t a play() helyett innen kell indítani — beszédszintézis nem érint autoplay-t */
+  speakTts(): void {
+    if (!this.isTts || !this.ttsUtterance) return
+    window.speechSynthesis?.cancel()
+    const src = this.resolved.clip.source
+    if (src.kind !== 'tts') return
+    const utt = new SpeechSynthesisUtterance(src.text)
+    if (src.lang) utt.lang = src.lang
+    utt.volume = Math.min(this.resolved.clip.volume ?? 1, 1)
+    window.speechSynthesis?.speak(utt)
   }
 
   onExit(_fps: number): void {
-    if (this.isTts) {
-      window.speechSynthesis?.cancel()
-      return
-    }
+    if (this.isTts) { window.speechSynthesis?.cancel(); return }
     this.audio?.pause()
   }
 
@@ -110,9 +89,22 @@ export class AudioElement extends BaseElement {
 
   show(): void { /* audio has no visual */ }
   hide(): void {
-    this._unlockCleanup?.()
-    this._unlockCleanup = null
     if (this.isTts) { window.speechSynthesis?.cancel(); return }
     if (this.audio && !this.audio.paused) this.audio.pause()
+  }
+
+  /** Teljes leállítás — BrowserRenderer.destroy() hívja minden elementen */
+  destroy(): void {
+    if (this.isTts) { window.speechSynthesis?.cancel(); return }
+    if (this.audio) {
+      this.audio.pause()
+      this.audio.src = ''
+      try { this.audio.load() } catch {}
+    }
+  }
+
+  /** Mute/unmute — preview kontrollra */
+  setMuted(muted: boolean): void {
+    if (this.audio) this.audio.muted = muted
   }
 }

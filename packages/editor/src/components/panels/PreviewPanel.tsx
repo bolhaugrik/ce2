@@ -25,6 +25,9 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
   const [playing,  setPlaying]  = useState(false)
   const [timeSec,  setTimeSec]  = useState(0)
   const [totalSec, setTotalSec] = useState(1)
+  const [muted,    setMuted]    = useState(false)
+  const mutedRef = useRef(muted)
+  mutedRef.current = muted
 
   // Sync wrapperRef → explicit px size on containerRef + refit
   useEffect(() => {
@@ -71,6 +74,7 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
     rendererRef.current = renderer
     setRendererRef(renderer)
     setTotalSec(renderer.totalTimeSec)
+    if (mutedRef.current) renderer.setMuted(true)   // restore muted state across remounts
 
     if (prevTimeSec > 0) renderer.seekToSec(prevTimeSec)
 
@@ -178,6 +182,17 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
           </button>
           <button onClick={() => { rendererRef.current?.stop(); setPlaying(false) }} style={{ padding: '2px 8px', fontSize: 11, background: '#374151', color: '#fff', borderRadius: 3, border: 'none', cursor: 'pointer' }}>
             ■
+          </button>
+          <button
+            onClick={() => {
+              const next = !muted
+              rendererRef.current?.setMuted(next)
+              setMuted(next)
+            }}
+            title={muted ? 'Némítva — kattints a hang visszakapcsolásához' : 'Némítás'}
+            style={{ padding: '2px 8px', fontSize: 11, background: muted ? '#dc2626' : '#374151', color: '#fff', borderRadius: 3, border: 'none', cursor: 'pointer' }}
+          >
+            {muted ? '🔇' : '🔊'}
           </button>
           <span style={{ fontSize: 10, color: '#9ca3af', fontFamily: 'monospace', marginLeft: 4 }}>
             {timeSec.toFixed(1)}s / {totalSec.toFixed(1)}s
