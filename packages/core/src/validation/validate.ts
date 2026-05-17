@@ -31,6 +31,20 @@ export function validateComposition(raw: unknown): ValidationResult {
 
   const comp = parsed.data as CE2Composition
 
+  // 2a. Text payload must have content OR text
+  for (const clip of allClips(comp)) {
+    if (clip.source.kind === 'text') {
+      const p = clip.source.payload as any
+      if (!p.content && !p.text) {
+        errors.push({
+          code: 'TEXT_MISSING_CONTENT',
+          message: `Clip "${clip.id}" text payload has neither 'content' nor 'text' field`,
+          path: `clips.${clip.id}.source.payload`,
+        })
+      }
+    }
+  }
+
   // 2. Asset reference integrity
   const assetIds = new Set(comp.assets.map(a => a.id))
   for (const clip of allClips(comp)) {

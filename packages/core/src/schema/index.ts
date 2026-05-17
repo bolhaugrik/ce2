@@ -36,26 +36,25 @@ export const TransitionSchema = z
 // ─── TextPayload ──────────────────────────────────────────────────────────────
 
 export const TextPayloadSchema = z.object({
-  content: z.string(),
-  font_size: z.number().positive().optional(),
-  font_family: z.string().optional(),
-  font_weight: z.union([z.string(), z.number()]).optional(),
-  font_style: z.enum(['normal', 'italic']).optional(),
-  color: z.string().optional(),
-  text_align: z.enum(['left', 'center', 'right']).optional(),
-  line_height: z.number().positive().optional(),
-  letter_spacing: z.number().optional(),
-  text_transform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(),
-  position: z
-    .object({
-      anchor: z
-        .enum(['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'])
-        .optional(),
-      x: z.number().optional(),
-      y: z.number().optional(),
-    })
-    .optional(),
-})
+  // OSS field: content. ZAVA alias: text. One of them must be present.
+  content: z.string().optional(),
+  text:    z.string().optional(),   // ZAVA compat alias
+  font_size:       z.number().positive().optional(),
+  font_size_pct:   z.number().positive().optional(), // ZAVA compat
+  font_family:     z.string().optional(),
+  font_weight:     z.union([z.string(), z.number()]).optional(),
+  font_style:      z.enum(['normal', 'italic']).optional(),
+  color:           z.string().optional(),
+  text_align:      z.enum(['left', 'center', 'right']).optional(),
+  align:           z.enum(['left', 'center', 'right']).optional(), // ZAVA compat
+  line_height:     z.number().positive().optional(),
+  letter_spacing:  z.number().optional(),
+  letter_spacing_em: z.number().optional(), // ZAVA compat
+  text_transform:  z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(),
+  max_width_pct:   z.number().optional(), // ZAVA compat
+  lines:           z.array(z.string()).optional(), // ZAVA compat
+  position:        z.record(z.unknown()).optional(), // accept both OSS and ZAVA position formats
+}).passthrough()
 
 // ─── AudioMarker (CE2.16d) ────────────────────────────────────────────────────
 
