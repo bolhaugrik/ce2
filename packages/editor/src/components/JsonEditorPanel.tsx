@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { CE2CompositionSchema } from '@ce2/core'
+import type { CE2Composition } from '@ce2/core'
 import { useEditorStore } from '../store/useEditorStore.js'
 
-export function JsonEditorPanel() {
-  const { composition, setComposition } = useEditorStore()
+interface JsonEditorPanelProps {
+  composition?: CE2Composition
+  onApply?: (comp: CE2Composition) => void
+}
+
+export function JsonEditorPanel({ composition: propComp, onApply }: JsonEditorPanelProps = {}) {
+  const store = useEditorStore()
+  const composition = propComp ?? store.composition
+  const setComposition = onApply ?? store.setComposition
   const [text, setText]     = useState(() => JSON.stringify(composition, null, 2))
   const [error, setError]   = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()

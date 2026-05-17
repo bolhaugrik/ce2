@@ -1,6 +1,8 @@
-export { CE2Editor } from './components/EditorRoot.js'
-export type { CE2EditorProps } from './components/EditorRoot.js'
+// Main export: new ZAVA-style CE2 editor
+export { CE2Editor } from './EditorRoot.js'
+export type { CE2EditorProps } from './EditorRoot.js'
 
+// Legacy exports (backwards compat)
 export { useEditorStore } from './store/useEditorStore.js'
 export type { EditorStore, ValidationState } from './store/useEditorStore.js'
 
