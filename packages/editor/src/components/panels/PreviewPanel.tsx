@@ -140,14 +140,13 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
       display: 'flex', flexDirection: 'column', background: '#000',
       width: '100%', ...(fullScreen ? { flex: 1, minHeight: 0 } : {}),
     }}>
-      {/* Canvas area with overlays */}
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <div
-          ref={containerRef}
-          style={{ width: '100%', height: '100%', position: 'relative' }}
-        />
-        {/* PauseLabels overlay */}
-        <div className="absolute inset-0 pointer-events-none">
+      {/* containerRef IS the flex-1 wrapper — clientHeight is the flex-computed value (not 0) */}
+      <div
+        ref={containerRef}
+        style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
+      >
+        {/* PauseLabels overlay sits on top of the BrowserRenderer canvas */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
           <PauseLabelsOverlay composition={composition} onJumpToClip={onJumpToClip} />
         </div>
       </div>
