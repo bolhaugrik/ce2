@@ -1,105 +1,101 @@
 import type { ResolvedClip, TextPayload } from '@ce2/core'
 import { BaseElement } from './BaseElement.js'
 
-const ANCHOR_TO_CSS: Record<string, { justifyContent: string; alignItems: string }> = {
-  'top-left':     { justifyContent: 'flex-start', alignItems: 'flex-start' },
-  'top':          { justifyContent: 'center',     alignItems: 'flex-start' },
-  'top-right':    { justifyContent: 'flex-end',   alignItems: 'flex-start' },
-  'left':         { justifyContent: 'flex-start', alignItems: 'center' },
-  'center':       { justifyContent: 'center',     alignItems: 'center' },
-  'right':        { justifyContent: 'flex-end',   alignItems: 'center' },
-  'bottom-left':  { justifyContent: 'flex-start', alignItems: 'flex-end' },
-  'bottom':       { justifyContent: 'center',     alignItems: 'flex-end' },
-  'bottom-right': { justifyContent: 'flex-end',   alignItems: 'flex-end' },
+const ANCHOR_FLEX: Record<string, { justify: string; align: string }> = {
+  'top-left':     { justify: 'flex-start', align: 'flex-start' },
+  'top':          { justify: 'center',     align: 'flex-start' },
+  'top-right':    { justify: 'flex-end',   align: 'flex-start' },
+  'left':         { justify: 'flex-start', align: 'center' },
+  'center':       { justify: 'center',     align: 'center' },
+  'right':        { justify: 'flex-end',   align: 'center' },
+  'bottom-left':  { justify: 'flex-start', align: 'flex-end' },
+  'bottom':       { justify: 'center',     align: 'flex-end' },
+  'bottom-right': { justify: 'flex-end',   align: 'flex-end' },
 }
 
 export class TextElement extends BaseElement {
-  private payload: TextPayload
+  private inner: HTMLSpanElement
   private typewriterActive = false
   private fullText = ''
+  private payload: TextPayload
 
   constructor(resolved: ResolvedClip) {
     super(resolved)
+
     const src = resolved.clip.source
     this.payload = src.kind === 'text' ? src.payload : { content: '' }
+
+    // Build inner span and place inside outer el
+    this.inner = document.createElement('span')
+    this.el.appendChild(this.inner)
+
+    this.applyLayout()
     this.applyTextStyles()
 
-    const typewriter = resolved.clip.attached_effects?.find(e => e.kind === 'text.typewriter')
-    if (typewriter) {
+    // Typewriter setup
+    const tw = resolved.clip.attached_effects?.find(e => e.kind === 'text.typewriter')
+    if (tw) {
       this.typewriterActive = true
       this.fullText = this.payload.content
-      this.el.textContent = ''
+      this.inner.textContent = ''
     } else {
-      this.el.textContent = this.payload.content
+      this.inner.textContent = this.payload.content
     }
 
+    // Apply remaining effects to the outer el
     if (resolved.clip.attached_effects?.length) {
-      const durationSec =
-        (resolved.end_frame - resolved.start_frame) /
-        ((resolved.clip as any)._fps ?? 30)
-      this.el.style.setProperty('--ce2-clip-dur', `${durationSec}s`)
-      this.applyEffects(resolved.clip.attached_effects!, 30)
+      this.applyEffects(resolved.clip.attached_effects, 30)
     }
   }
 
   protected createElement(): HTMLElement {
-    const el = document.createElement('div')
-    el.style.cssText = 'width:100%;height:100%;display:flex;'
-    return el
+    const div = document.createElement('div')
+    // Fills the entire canvas slot; flex positions the inner span
+    div.style.cssText = 'width:100%;height:100%;display:flex;pointer-events:none;'
+    return div
   }
 
   update(frame: number, fps: number): void {
     if (!this.typewriterActive) return
-    const typewriter = this.resolved.clip.attached_effects?.find(e => e.kind === 'text.typewriter')
-    if (!typewriter) return
-
+    const tw = this.resolved.clip.attached_effects?.find(e => e.kind === 'text.typewriter')
+    if (!tw) return
     const elapsed = (frame - this.resolved.start_frame) / fps
-    const charsPerSec = (typewriter['chars_per_sec'] as number) ?? 15
-    const visibleChars = Math.min(Math.floor(elapsed * charsPerSec), this.fullText.length)
-    const cursor = typewriter['cursor'] && visibleChars < this.fullText.length ? '|' : ''
-    this.el.textContent = this.fullText.slice(0, visibleChars) + cursor
+    const charsPerSec = (tw['chars_per_sec'] as number) ?? 15
+    const n = Math.min(Math.floor(elapsed * charsPerSec), this.fullText.length)
+    const cursor = (tw['cursor'] && n < this.fullText.length) ? '|' : ''
+    this.inner.textContent = this.fullText.slice(0, n) + cursor
+  }
+
+  // ─── Private helpers ────────────────────────────────────────────────────────
+
+  private applyLayout(): void {
+    const pos = this.payload.position
+    const key = pos?.anchor ?? 'center'
+    const flex = ANCHOR_FLEX[key] ?? ANCHOR_FLEX['center']
+    this.el.style.justifyContent = flex.justify
+    this.el.style.alignItems     = flex.align
   }
 
   private applyTextStyles(): void {
-    const p = this.payload
-    const posAnchor = p.position?.anchor ?? 'center'
-    const css = ANCHOR_TO_CSS[posAnchor] ?? ANCHOR_TO_CSS['center']
+    const p  = this.payload
+    const s  = this.inner.style
+    const px = (v: number) => `${v}px`
 
-    Object.assign(this.el.style, {
-      display: 'flex',
-      width: '100%',
-      height: '100%',
-      justifyContent: css.justifyContent,
-      alignItems: css.alignItems,
-    })
+    if (p.font_size)       s.fontSize      = px(p.font_size)
+    if (p.font_family)     s.fontFamily    = p.font_family
+    if (p.font_weight)     s.fontWeight    = String(p.font_weight)
+    if (p.font_style)      s.fontStyle     = p.font_style
+    if (p.color)           s.color         = p.color
+    if (p.text_align)      s.textAlign     = p.text_align
+    if (p.line_height)     s.lineHeight    = String(p.line_height)
+    if (p.letter_spacing)  s.letterSpacing = px(p.letter_spacing)
+    if (p.text_transform)  s.textTransform = p.text_transform
 
-    const inner = document.createElement('span')
-    inner.style.cssText = [
-      p.font_size      ? `font-size:${p.font_size}px` : '',
-      p.font_family    ? `font-family:${p.font_family}` : '',
-      p.font_weight    ? `font-weight:${p.font_weight}` : '',
-      p.font_style     ? `font-style:${p.font_style}` : '',
-      p.color          ? `color:${p.color}` : '',
-      p.text_align     ? `text-align:${p.text_align}` : '',
-      p.line_height    ? `line-height:${p.line_height}` : '',
-      p.letter_spacing ? `letter-spacing:${p.letter_spacing}px` : '',
-      p.text_transform ? `text-transform:${p.text_transform}` : '',
-      p.position?.x    ? `margin-left:${p.position.x}px` : '',
-      p.position?.y    ? `margin-top:${p.position.y}px` : '',
-    ].filter(Boolean).join(';')
-
-    this.el.appendChild(inner)
-    // Redirect text rendering to inner span
-    Object.defineProperty(this, 'el', {
-      get: () => inner,
-      configurable: true,
-    })
-    // But keep the outer div in the DOM
-    Object.defineProperty(this, '_outerEl', { value: this.el, configurable: true })
-  }
-
-  /** Return outer div for DOM insertion */
-  get domEl(): HTMLElement {
-    return (this as any)._outerEl ?? this.el
+    // x/y offset from anchor point via translate
+    const x = p.position?.x ?? 0
+    const y = p.position?.y ?? 0
+    if (x !== 0 || y !== 0) {
+      s.transform = `translate(${x}px, ${y}px)`
+    }
   }
 }
