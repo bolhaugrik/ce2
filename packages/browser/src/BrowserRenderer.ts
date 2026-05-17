@@ -128,6 +128,11 @@ export class BrowserRenderer {
     return () => this.listeners.get(event)?.delete(handler)
   }
 
+  /** Re-apply container fit — call after container resizes */
+  refit(): void {
+    if (this.opts.fitContainer !== false) this.applyFit()
+  }
+
   destroy(): void {
     this.engine.destroy()
     this.canvas.remove()
@@ -223,12 +228,19 @@ export class BrowserRenderer {
 
   private applyFit(): void {
     const { width, height } = this.opts.composition.meta
-    const cw = this.opts.container.clientWidth || width
+    const cw = this.opts.container.clientWidth  || width
     const ch = this.opts.container.clientHeight || height
-    const scale = Math.min(cw / width, ch / height)
-    if (Math.abs(scale - 1) < 0.01) return
-    this.canvas.style.transform = `scale(${scale})`
+    const scale  = Math.min(cw / width, ch / height)
+    const left   = Math.round((cw - width  * scale) / 2)
+    const top    = Math.round((ch - height * scale) / 2)
+
+    // Absolute positioning keeps canvas out of document flow → no layout bleed
+    this.canvas.style.position        = 'absolute'
+    this.canvas.style.top             = '0'
+    this.canvas.style.left            = '0'
     this.canvas.style.transformOrigin = 'top left'
+    this.canvas.style.transform       = `translate(${left}px, ${top}px) scale(${scale})`
+    this.opts.container.style.position = 'relative'
     this.opts.container.style.overflow = 'hidden'
   }
 
