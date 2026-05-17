@@ -6,9 +6,12 @@ interface ToolbarProps {
   onSave?: (comp: CE2Composition) => void
   jsonOpen: boolean
   onToggleJson: () => void
+  assetOpen?: boolean
+  onToggleAssets?: () => void
+  assetCount?: number
 }
 
-export function Toolbar({ onSave, jsonOpen, onToggleJson }: ToolbarProps) {
+export function Toolbar({ onSave, jsonOpen, onToggleJson, assetOpen, onToggleAssets, assetCount }: ToolbarProps) {
   const { composition, validation, isDirty, _revalidate } = useEditorStore()
 
   return (
@@ -28,6 +31,16 @@ export function Toolbar({ onSave, jsonOpen, onToggleJson }: ToolbarProps) {
           ? '✓ Valid'
           : `✕ ${validation.errors.length} error${validation.errors.length !== 1 ? 's' : ''}`}
       </span>
+
+      {onToggleAssets && (
+        <button
+          className={`ce2-btn ${assetOpen ? 'ce2-btn--primary' : ''}`}
+          onClick={onToggleAssets}
+          title="Toggle Asset Manager"
+        >
+          {`{ } Assets${assetCount !== undefined ? ` (${assetCount})` : ''}`}
+        </button>
+      )}
 
       <button
         className={`ce2-btn ${jsonOpen ? 'ce2-btn--primary' : ''}`}

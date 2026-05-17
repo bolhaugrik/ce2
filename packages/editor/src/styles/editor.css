@@ -476,3 +476,61 @@ input[type="color"].ce2-color-native {
   font-size: 10px; padding: 2px 6px; border-radius: 4px;
   background: var(--ed-surface3); color: var(--ed-text3);
 }
+
+/* ── Spanning layers section ─────────────────────────────────────────────── */
+.ce2-spanning-section-wrap {
+  border-bottom: 1px solid var(--ed-border);
+  background: var(--ed-surface);
+}
+.ce2-spanning-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: rgba(99,102,241,.05);
+  border-bottom: 1px solid var(--ed-border);
+  user-select: none;
+}
+
+/* ── Asset manager ───────────────────────────────────────────────────────── */
+.ce2-asset-manager {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.ce2-asset-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ed-border);
+  transition: background .1s;
+}
+.ce2-asset-row:hover { background: var(--ed-surface2); }
+.ce2-asset-row__id {
+  font-size: 11px;
+  font-family: var(--ed-mono);
+  color: var(--ed-text2);
+  min-width: 60px;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-top: 7px;
+  flex-shrink: 0;
+}
+
+/* ── Kind badge ──────────────────────────────────────────────────────────── */
+.ce2-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: .04em;
+  flex-shrink: 0;
+  margin-top: 6px;
+}

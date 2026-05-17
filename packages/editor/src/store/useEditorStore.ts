@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
-import type { CE2Composition, Clip, Moment } from '@ce2/core'
+import type { AssetRef, CE2Composition, Clip, Moment } from '@ce2/core'
 import { validateComposition } from '@ce2/core'
 
 export interface ValidationState {
@@ -31,6 +31,15 @@ export interface EditorStore {
   addClip:    (momentId: string, clip: Clip) => void
   removeClip: (clipId: string) => void
   updateClip: (clipId: string, patch: Partial<Clip>) => void
+
+  // ── Spanning layer mutations ──────────────────────────────────────────────
+  addSpanningClip:    (clip: Clip) => void
+  removeSpanningClip: (clipId: string) => void
+
+  // ── Asset mutations ───────────────────────────────────────────────────────
+  addAsset:    (asset: AssetRef) => void
+  removeAsset: (id: string) => void
+  updateAsset: (id: string, patch: Partial<AssetRef>) => void
 
   // ── Reorder ───────────────────────────────────────────────────────────────
   moveMoment: (id: string, dir: 'up' | 'down') => void
@@ -186,6 +195,37 @@ export const useEditorStore = create<EditorStore>()(
         s.isDirty = true
         break
       }
+    }),
+
+    addSpanningClip: (clip) => set(s => {
+      const id = newClipId(s.composition as CE2Composition)
+      s.composition.spanning_layers.push({ ...clip, id } as any)
+      s.selectedClipId = id
+      s.isDirty = true
+    }),
+
+    removeSpanningClip: (clipId) => set(s => {
+      const idx = s.composition.spanning_layers.findIndex(c => c.id === clipId)
+      if (idx !== -1) s.composition.spanning_layers.splice(idx, 1)
+      if (s.selectedClipId === clipId) s.selectedClipId = null
+      s.isDirty = true
+    }),
+
+    addAsset: (asset) => set(s => {
+      const exists = s.composition.assets.findIndex(a => a.id === asset.id)
+      if (exists === -1) s.composition.assets.push(asset as any)
+      s.isDirty = true
+    }),
+
+    removeAsset: (id) => set(s => {
+      s.composition.assets = s.composition.assets.filter(a => a.id !== id)
+      s.isDirty = true
+    }),
+
+    updateAsset: (id, patch) => set(s => {
+      const asset = s.composition.assets.find(a => a.id === id)
+      if (asset) Object.assign(asset, patch)
+      s.isDirty = true
     }),
 
     updateGlobals: (patch) => set(s => {
