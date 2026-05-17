@@ -11,7 +11,7 @@ const LAYER_ICON: Record<string, string> = {
 function clipLabel(clip: Clip): string {
   if (clip.label) return clip.label
   const src = clip.source
-  if (src.kind === 'text')     return src.payload.content.slice(0, 24)
+  if (src.kind === 'text')     return ((src.payload as any).content ?? (src.payload as any).text ?? '').slice(0, 24)
   if (src.kind === 'asset')    return src.asset_id || '(no asset)'
   if (src.kind === 'tts')      return src.text.slice(0, 24)
   if (src.kind === 'computed') return src.logic_id
