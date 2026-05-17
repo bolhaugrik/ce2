@@ -4,8 +4,9 @@ import { useEditorStore } from '../store/useEditorStore.js'
 
 export function PreviewPanel() {
   const { composition } = useEditorStore()
-  const containerRef = useRef<HTMLDivElement>(null)
-  const rendererRef  = useRef<BrowserRenderer | null>(null)
+  const containerRef   = useRef<HTMLDivElement>(null)
+  const rendererRef    = useRef<BrowserRenderer | null>(null)
+  const keepPlayingRef = useRef(true)   // survives renderer rebuilds
   const [playing,  setPlaying]  = useState(false)
   const [timeSec,  setTimeSec]  = useState(0)
   const [totalSec, setTotalSec] = useState(1)
@@ -42,8 +43,10 @@ export function PreviewPanel() {
     setTotalSec(Math.max(est, 3))
     setMomentId(composition.moments[0]?.id ?? null)
 
-    renderer.play()
-    setPlaying(true)
+    if (keepPlayingRef.current) {
+      renderer.play()
+      setPlaying(true)
+    }
 
     return () => { unsubs.forEach(u => u()); renderer.destroy(); rendererRef.current = null }
   }, [composition])
@@ -70,8 +73,8 @@ export function PreviewPanel() {
 
   const togglePlay = () => {
     const r = rendererRef.current; if (!r) return
-    if (r.isPlaying) { r.pause(); setPlaying(false) }
-    else             { r.play();  setPlaying(true) }
+    if (r.isPlaying) { r.pause(); setPlaying(false); keepPlayingRef.current = false }
+    else             { r.play();  setPlaying(true);  keepPlayingRef.current = true  }
   }
 
   // ── Scrubbing ────────────────────────────────────────────────────────────
