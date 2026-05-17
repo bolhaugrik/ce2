@@ -1,0 +1,47 @@
+{
+  "name": "@ce2/browser",
+  "version": "0.2.0",
+  "description": "CE2 browser renderer — embed a composition as animated DOM in any web page",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev":   "tsup --watch",
+    "test":  "vitest run"
+  },
+  "dependencies": {
+    "@ce2/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0",
+    "tsup": "^8.0.2",
+    "jsdom": "^24.0.0",
+    "@vitest/coverage-v8": "^1.6.0"
+  }
+}
