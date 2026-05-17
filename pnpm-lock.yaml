@@ -18,6 +18,22 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(jsdom@24.1.3)
 
+  examples/basic:
+    dependencies:
+      '@ce2/browser':
+        specifier: workspace:*
+        version: link:../../packages/browser
+      '@ce2/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+      vite:
+        specifier: ^5.2.0
+        version: 5.4.21
+
   packages/browser:
     dependencies:
       '@ce2/core':

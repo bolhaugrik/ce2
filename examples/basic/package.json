@@ -1,0 +1,18 @@
+{
+  "name": "@ce2/example-basic",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "dev":   "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ce2/core":    "workspace:*",
+    "@ce2/browser": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0",
+    "typescript": "^5.4.5"
+  }
+}

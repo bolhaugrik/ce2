@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CE2 — Basic Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0f;
+      color: #e2e8f0;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    header {
+      text-align: center;
+    }
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+    header p {
+      font-size: 0.8rem;
+      color: #475569;
+      margin-top: 4px;
+    }
+
+    /* Player shell */
+    #player-wrap {
+      position: relative;
+      width: 300px;
+      height: 533px;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 24px 64px rgba(0,0,0,0.6);
+    }
+    #player-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Controls */
+    #controls {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Progress bar */
+    #progress-wrap {
+      position: relative;
+      height: 4px;
+      background: #1e293b;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    #progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1, #a78bfa);
+      border-radius: 2px;
+      width: 0%;
+      pointer-events: none;
+      transition: width 0.1s linear;
+    }
+    #progress-wrap:hover #progress-fill {
+      background: linear-gradient(90deg, #818cf8, #c4b5fd);
+    }
+
+    /* Buttons row */
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    button {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    button:hover { background: #273549; border-color: #4f6080; }
+    button:active { transform: scale(0.97); }
+
+    #btn-play {
+      min-width: 80px;
+      background: #4f46e5;
+      border-color: #6366f1;
+      font-weight: 600;
+    }
+    #btn-play:hover { background: #4338ca; }
+
+    .time-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      font-variant-numeric: tabular-nums;
+      flex: 1;
+      text-align: right;
+    }
+
+    /* Moment indicator */
+    #moment-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .moment-pill {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .moment-pill.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: #6366f1;
+      color: #a5b4fc;
+    }
+    .moment-pill:hover { border-color: #4f6080; color: #94a3b8; }
+
+    /* Validation badge */
+    #status {
+      font-size: 0.7rem;
+      color: #22c55e;
+      text-align: center;
+    }
+    #status.error { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CE2 Basic Demo</h1>
+    <p>@ce2/browser — DOM renderer</p>
+  </header>
+
+  <div id="player-wrap">
+    <div id="player-container"></div>
+  </div>
+
+  <div id="controls">
+    <div id="progress-wrap">
+      <div id="progress-fill"></div>
+    </div>
+    <div class="btn-row">
+      <button id="btn-play">▶ Play</button>
+      <button id="btn-stop">■ Stop</button>
+      <span class="time-label" id="time-label">0.0s / 0.0s</span>
+    </div>
+    <div id="moment-row"></div>
+  </div>
+
+  <div id="status"></div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
