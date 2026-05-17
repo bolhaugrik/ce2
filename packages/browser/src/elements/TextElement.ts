@@ -66,10 +66,7 @@ export class TextElement extends BaseElement {
       this.inner.textContent = this.payload.content
     }
 
-    // Apply remaining effects to the outer el
-    if (resolved.clip.attached_effects?.length) {
-      this.applyEffects(resolved.clip.attached_effects, 30)
-    }
+
   }
 
   protected createElement(): HTMLElement {

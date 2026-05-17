@@ -4,6 +4,7 @@ import { easingToCss } from '../css/animations.js'
 export abstract class BaseElement {
   readonly el: HTMLElement
   readonly resolved: ResolvedClip
+  private effectAnimations: string[] = []
 
   constructor(resolved: ResolvedClip) {
     this.resolved = resolved
@@ -11,6 +12,9 @@ export abstract class BaseElement {
     this.applyBaseStyles()
     this.el.dataset.clipId = resolved.clip.id
     this.el.classList.add('ce2-clip', `ce2-clip--${resolved.clip.layer}`)
+    if (resolved.clip.attached_effects?.length) {
+      this.applyEffects(resolved.clip.attached_effects, 30)
+    }
   }
 
   protected abstract createElement(): HTMLElement
@@ -68,23 +72,18 @@ export abstract class BaseElement {
           const period = effect['period_sec'] ?? 2.5
           const axis   = (effect['axis'] as string | undefined) ?? 'y'
           this.el.style.setProperty('--ce2-float-amp', String(amp))
-          if (axis === 'x') {
-            this.el.style.animation = `ce2-float-x ${period}s ${easing} ${delay} infinite`
-          } else if (axis === 'both') {
-            this.el.style.animation = `ce2-float-both ${period}s ${easing} ${delay} infinite`
-          } else {
-            this.el.style.animation = `ce2-float ${period}s ${easing} ${delay} infinite`
-          }
+          const floatName = axis === 'x' ? 'ce2-float-x' : axis === 'both' ? 'ce2-float-both' : 'ce2-float'
+          this._addEffectAnimation(`${floatName} ${period}s ${easing} ${delay} infinite`)
           break
         }
         case 'motion.pulse':
           this.el.style.setProperty('--ce2-pulse-max', String(effect['scale_max'] ?? 1.08))
-          this.el.style.animation = `ce2-pulse ${effect['period_sec'] ?? 1.2}s ${easing} ${delay} infinite`
+          this._addEffectAnimation(`ce2-pulse ${effect['period_sec'] ?? 1.2}s ${easing} ${delay} infinite`)
           break
         case 'motion.shake': {
           const speeds: Record<string, string> = { slow: '0.6s', normal: '0.3s', fast: '0.15s' }
           this.el.style.setProperty('--ce2-shake-amp', String(effect['intensity_px'] ?? 5))
-          this.el.style.animation = `ce2-shake ${speeds[effect['speed'] as string] ?? '0.3s'} ${easing} ${delay} infinite`
+          this._addEffectAnimation(`ce2-shake ${speeds[effect['speed'] as string] ?? '0.3s'} ${easing} ${delay} infinite`)
           break
         }
         case 'motion.move':
@@ -135,6 +134,11 @@ export abstract class BaseElement {
     }
   }
 
+  private _addEffectAnimation(anim: string): void {
+    this.effectAnimations.push(anim)
+    this.el.style.animation = this.effectAnimations.join(', ')
+  }
+
   protected applyTransition(t: Transition, dir: 'in' | 'out', fps: number): void {
     const dur    = t.duration_sec ?? 0.4
     const easing = easingToCss(t.easing as string | undefined)
@@ -171,8 +175,9 @@ export abstract class BaseElement {
     if (t['to_scale'])   this.el.style.setProperty('--ce2-zoom-to',   String(t['to_scale']))
     if (t['from_px'])    this.el.style.setProperty('--ce2-blur-px',   String(t['from_px']))
 
-    this.el.style.animation = `${animName} ${dur}s ${easing} both`
+    const transAnim = `${animName} ${dur}s ${easing} both`
+    this.el.style.animation = this.effectAnimations.length
+      ? `${transAnim}, ${this.effectAnimations.join(', ')}`
+      : transAnim
   }
 }
-
-export type Transition = Clip['in_transition'] & {}

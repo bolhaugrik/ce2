@@ -39,10 +39,7 @@ export function PreviewPanel() {
 
     rendererRef.current = renderer
 
-    const allClips = [...composition.spanning_layers, ...composition.moments.flatMap(m => m.layers)]
-    const est = allClips.reduce((mx, c) =>
-      c.duration.kind === 'fixed_sec' ? Math.max(mx, c.duration.value) : Math.max(mx, 3), 0) * 1.5
-    setTotalSec(Math.max(est, 3))
+    setTotalSec(renderer.totalTimeSec)
     setMomentId(composition.moments[0]?.id ?? null)
 
     // Restore position (small rebuild → same spot)

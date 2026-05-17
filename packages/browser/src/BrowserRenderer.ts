@@ -37,6 +37,7 @@ export class BrowserRenderer {
   private currentMomentId: string | null = null
   private momentRanges: Array<{ id: string; start: number; end: number }> = []
   private fps: number
+  private _totalFrames = 1
   private listeners = new Map<RendererEventType, Set<(...args: unknown[]) => void>>()
 
   constructor(private opts: BrowserRendererOptions) {
@@ -89,13 +90,13 @@ export class BrowserRenderer {
     if (opts.fitContainer !== false) this.applyFit()
 
     // Calculate total frame count
-    const totalFrames = this.resolved.length > 0
+    this._totalFrames = this.resolved.length > 0
       ? Math.max(...this.resolved.map(r => r.end_frame))
       : 1
 
     this.engine = new PlaybackEngine({
       fps: this.fps,
-      totalFrames,
+      totalFrames: this._totalFrames,
       loop: opts.loop ?? false,
       onFrame: (frame) => this.onFrame(frame),
       onEnd: () => this.emit('end'),
@@ -113,25 +114,19 @@ export class BrowserRenderer {
 
   // ─── Public API ─────────────────────────────────────────────────────────────
 
-  /** Call during user gesture (e.g. play button click) to unlock audio */
-  primeAudio(): void {
-    for (const el of this.elements) {
-      const audio = (el as any).audio as HTMLAudioElement | undefined
-      if (audio && audio.src) {
-        audio.play().then(() => { audio.pause(); audio.currentTime = 0 }).catch(() => {})
-      }
-    }
-  }
+  /** @deprecated — no-op, kept for API compat. Media is resumed automatically from play(). */
+  primeAudio(): void {}
 
-  play(): void   { this.primeAudio(); this.engine.play() }
-  pause(): void  { this.engine.pause() }
-  stop(): void   { this.engine.stop() }
+  play(): void   { this.engine.play(); this.resumeActiveMedia() }
+  pause(): void  { this.pauseAllMedia(); this.engine.pause() }
+  stop(): void   { this.pauseAllMedia(); this.engine.stop() }
   seek(frame: number): void { this.engine.seek(frame) }
   seekToSec(sec: number): void { this.engine.seekToSec(sec) }
 
-  get currentFrame(): number { return this.engine.currentFrame }
+  get currentFrame(): number  { return this.engine.currentFrame }
   get currentTimeSec(): number { return this.engine.currentTimeSec }
-  get isPlaying(): boolean { return this.engine.isPlaying }
+  get totalTimeSec(): number   { return this._totalFrames / this.fps }
+  get isPlaying(): boolean     { return this.engine.isPlaying }
 
   on(event: RendererEventType, handler: (...args: unknown[]) => void): () => void {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set())
@@ -145,9 +140,31 @@ export class BrowserRenderer {
   }
 
   destroy(): void {
+    this.pauseAllMedia()
     this.engine.destroy()
     this.canvas.remove()
     this.listeners.clear()
+  }
+
+  // ─── Media control ──────────────────────────────────────────────────────────
+
+  private resumeActiveMedia(): void {
+    for (const el of this.elements) {
+      if (!this.activeSet.has(el.resolved.clip.id)) continue
+      const audio = (el as any).audio as HTMLAudioElement | undefined
+      if (audio?.src) audio.play().catch(() => {})
+      const video = (el as any).video as HTMLVideoElement | undefined
+      if (video?.src) video.play().catch(() => {})
+    }
+  }
+
+  private pauseAllMedia(): void {
+    for (const el of this.elements) {
+      const audio = (el as any).audio as HTMLAudioElement | undefined
+      if (audio) audio.pause()
+      const video = (el as any).video as HTMLVideoElement | undefined
+      if (video) video.pause()
+    }
   }
 
   // ─── Frame loop ─────────────────────────────────────────────────────────────
@@ -229,7 +246,7 @@ export class BrowserRenderer {
         // Resolve bundle inputs for computed sources
         const bundleInputs: Record<string, unknown> = {}
         if (clip.bundle_id) {
-          const bundle = opts.composition.bundles.find(b => b.id === clip.bundle_id)
+          const bundle = this.opts.composition.bundles.find(b => b.id === clip.bundle_id)
           if (bundle) Object.assign(bundleInputs, bundle.inputs)
         }
         const mergedInputs = { ...src.inputs, ...bundleInputs }
