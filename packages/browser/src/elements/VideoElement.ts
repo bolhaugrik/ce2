@@ -32,10 +32,10 @@ export class VideoElement extends BaseElement {
     this.video.load()
   }
 
-  update(frame: number, _fps: number): void {
+  update(frame: number, fps: number): void {
+    super.update(frame, fps)   // ← frame-alapú transform/opacity/filter
     const elapsed = (frame - this.resolved.start_frame) / this.fps
     const targetTime = this.trimIn + elapsed
-    // Only seek if drift > 1 frame to avoid constant seeking
     if (Math.abs(this.video.currentTime - targetTime) > 1 / this.fps) {
       this.video.currentTime = targetTime
     }

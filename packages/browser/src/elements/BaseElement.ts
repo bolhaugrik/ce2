@@ -1,51 +1,359 @@
-import type { ResolvedClip, Clip, Effect, Transition } from '@ce2/core'
-import { easingToCss } from '../css/animations.js'
+import type { ResolvedClip, Effect, Transition } from '@ce2/core'
+
+/**
+ * BaseElement — frame-alapú renderer (Remotion-szerű).
+ *
+ * Nincsenek CSS keyframe animációk: minden frame-ben kiszámítjuk
+ * a transform/opacity/filter értékeket inline style-ként.
+ * → "amit látsz azt kapsz" (WYSIWYG): pause = pontos frame; minden
+ *   effect kombinálódik egyetlen string-be (nincs CSS conflict).
+ */
+
+export interface FrameStyle {
+  translateX: number
+  translateY: number
+  scaleX:     number
+  scaleY:     number
+  opacity:    number
+  blur:       number    // px
+  rotateDeg:  number
+  /** filter() string ami a blur-höz adódik (brightness, contrast, etc.) */
+  filterExtra: string
+}
+
+function newFrameStyle(baseOpacity: number): FrameStyle {
+  return {
+    translateX: 0, translateY: 0,
+    scaleX: 1, scaleY: 1, rotateDeg: 0,
+    opacity: baseOpacity,
+    blur: 0, filterExtra: '',
+  }
+}
+
+function easing(t: number, kind?: string): number {
+  switch (kind ?? 'ease-out') {
+    case 'linear':       return t
+    case 'ease':         return t * (2 - t)
+    case 'ease-in':      return t * t
+    case 'ease-out':     return t * (2 - t)
+    case 'ease-in-out':  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    case 'back-out': {
+      const c1 = 1.70158, c3 = c1 + 1
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+    }
+    case 'back-in': {
+      const c1 = 1.70158, c3 = c1 + 1
+      return c3 * t * t * t - c1 * t * t
+    }
+    case 'bounce-out': {
+      const n1 = 7.5625, d1 = 2.75
+      if (t < 1 / d1) return n1 * t * t
+      if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75
+      if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375
+      return n1 * (t -= 2.625 / d1) * t + 0.984375
+    }
+    default: return t * (2 - t)
+  }
+}
 
 export abstract class BaseElement {
   readonly el: HTMLElement
   readonly resolved: ResolvedClip
-  private effectAnimations: string[] = []
+
+  private attachedEffects: Effect[] = []
+  private inTransition?:  Transition
+  private outTransition?: Transition
+
+  /** Cached: static base opacity from clip definition */
+  private baseOpacity: number
 
   constructor(resolved: ResolvedClip) {
     this.resolved = resolved
     this.el = this.createElement()
-    this.applyBaseStyles()
     this.el.dataset.clipId = resolved.clip.id
     this.el.classList.add('ce2-clip', `ce2-clip--${resolved.clip.layer}`)
-    if (resolved.clip.attached_effects?.length) {
-      this.applyEffects(resolved.clip.attached_effects, 30)
-    }
+
+    this.baseOpacity     = resolved.clip.opacity ?? 1
+    this.attachedEffects = resolved.clip.attached_effects ?? []
+    this.inTransition    = resolved.clip.in_transition
+    this.outTransition   = resolved.clip.out_transition
+
+    this.applyBaseStyles()
+    this.applyStaticEffects()
   }
 
   protected abstract createElement(): HTMLElement
 
-  /** Called every frame while the clip is visible */
-  update(_frame: number, _fps: number): void {}
-
-  /** Called once when the clip first becomes visible */
-  onEnter(fps: number): void {
-    const t = this.resolved.clip.in_transition
-    if (t) this.applyTransition(t, 'in', fps)
+  /** Per-frame frissítés — minden frame-ben hívva amíg aktív. */
+  update(frame: number, fps: number): void {
+    const s = this.computeFrameStyle(frame, fps)
+    this.applyFrameStyle(s)
   }
 
-  /** Called when the clip is about to leave (last N frames) */
-  onExit(fps: number): void {
-    const t = this.resolved.clip.out_transition
-    if (t) this.applyTransition(t, 'out', fps)
+  /** Frame 0-tól mostani frame-ig számolt összes vizuális érték. */
+  protected computeFrameStyle(frame: number, fps: number): FrameStyle {
+    const start    = this.resolved.start_frame
+    const end      = this.resolved.end_frame
+    const dur      = (end - start) / fps
+    const elapsed  = Math.max(0, (frame - start) / fps)
+    const remain   = Math.max(0, dur - elapsed)
+
+    const style = newFrameStyle(this.baseOpacity)
+
+    // 1) Effects (continuous — float/pulse/shake) + static (blur/color filters)
+    for (const eff of this.attachedEffects) {
+      this._applyEffect(eff, elapsed, dur, style)
+    }
+
+    // 2) In-transition (first N seconds)
+    if (this.inTransition) {
+      const tdur = this.inTransition.duration_sec ?? 0.4
+      if (elapsed < tdur) {
+        const t = elapsed / tdur
+        this._applyTransition(this.inTransition, t, 'in', style)
+      }
+    }
+
+    // 3) Out-transition (last N seconds)
+    if (this.outTransition) {
+      const tdur = this.outTransition.duration_sec ?? 0.4
+      if (remain < tdur) {
+        const t = 1 - (remain / tdur)
+        this._applyTransition(this.outTransition, t, 'out', style)
+      }
+    }
+
+    return style
   }
 
-  show(): void  { this.el.classList.remove('ce2-clip--hidden') }
-  hide(): void  { this.el.classList.add('ce2-clip--hidden') }
+  protected applyFrameStyle(s: FrameStyle): void {
+    const tx = s.translateX, ty = s.translateY
+    const sx = s.scaleX,     sy = s.scaleY
+    const transforms: string[] = []
+    if (tx !== 0 || ty !== 0) transforms.push(`translate(${tx}px, ${ty}px)`)
+    if (sx !== 1 || sy !== 1) transforms.push(`scale(${sx}, ${sy})`)
+    if (s.rotateDeg !== 0)    transforms.push(`rotate(${s.rotateDeg}deg)`)
+    this.el.style.transform = transforms.join(' ')
 
-  syncAnimationState(playing: boolean): void {
-    this.el.style.animationPlayState = playing ? 'running' : 'paused'
+    this.el.style.opacity = String(s.opacity)
+
+    const filters: string[] = []
+    if (s.blur > 0)        filters.push(`blur(${s.blur}px)`)
+    if (s.filterExtra)     filters.push(s.filterExtra)
+    this.el.style.filter = filters.join(' ')
   }
+
+  /** Egy effect alkalmazása a frame style-ra. */
+  private _applyEffect(eff: Effect, elapsed: number, _dur: number, s: FrameStyle): void {
+    switch (eff.kind) {
+      case 'motion.float': {
+        const amp    = (eff['amplitude_px'] as number) ?? 6
+        const period = (eff['period_sec']   as number) ?? 2.5
+        const axis   = (eff['axis']         as string) ?? 'y'
+        const v = amp * Math.sin(elapsed * 2 * Math.PI / period)
+        if (axis === 'x')        s.translateX += v
+        else if (axis === 'both') { s.translateX += v * 0.7; s.translateY += v }
+        else                      s.translateY += v
+        break
+      }
+      case 'motion.pulse': {
+        const smin   = (eff['scale_min']  as number) ?? 0.95
+        const smax   = (eff['scale_max']  as number) ?? 1.08
+        const period = (eff['period_sec'] as number) ?? 1.2
+        const v = smin + (smax - smin) * (Math.sin(elapsed * 2 * Math.PI / period) + 1) / 2
+        s.scaleX *= v; s.scaleY *= v
+        break
+      }
+      case 'motion.shake': {
+        const amp   = (eff['intensity_px'] as number) ?? 5
+        const speed = eff['speed'] === 'fast' ? 0.15 : eff['speed'] === 'slow' ? 0.6 : 0.3
+        const SHAKE = [-1, 1, -0.6, 0.4, 0]
+        const phase = (elapsed % speed) / speed
+        const idx   = Math.min(SHAKE.length - 1, Math.floor(phase * SHAKE.length))
+        s.translateX += amp * SHAKE[idx]
+        break
+      }
+      case 'motion.spin': {
+        const rpm = (eff['rpm'] as number) ?? 30
+        const dir = eff['direction'] === 'ccw' ? -1 : 1
+        s.rotateDeg += dir * elapsed * rpm * 6   // 360deg/min ÷ 60s = 6deg/s per rpm
+        break
+      }
+      case 'motion.move': {
+        // Egyszeri mozgás 0..duration_sec alatt from→to
+        const moveDur = (eff['duration_sec'] as number) ?? 1
+        const dly     = (eff['start_offset_sec'] as number) ?? 0
+        const t       = Math.max(0, Math.min(1, (elapsed - dly) / moveDur))
+        const e       = easing(t, eff['easing'] as string)
+        const fx      = (eff['from_x'] as number) ?? (eff['from_x_pct'] as number ?? 0)
+        const fy      = (eff['from_y'] as number) ?? (eff['from_y_pct'] as number ?? 0)
+        const tx      = (eff['to_x']   as number) ?? (eff['to_x_pct']   as number ?? 0)
+        const ty      = (eff['to_y']   as number) ?? (eff['to_y_pct']   as number ?? 0)
+        s.translateX += fx + (tx - fx) * e
+        s.translateY += fy + (ty - fy) * e
+        break
+      }
+      case 'motion.zoom': {
+        const zoomDur = (eff['duration_sec'] as number) ?? 1
+        const dly     = (eff['start_offset_sec'] as number) ?? 0
+        const t       = Math.max(0, Math.min(1, (elapsed - dly) / zoomDur))
+        const e       = easing(t, eff['easing'] as string)
+        const fs      = (eff['from_scale'] as number) ?? 1
+        const ts      = (eff['to_scale']   as number) ?? 1.5
+        const cur     = fs + (ts - fs) * e
+        s.scaleX *= cur; s.scaleY *= cur
+        break
+      }
+      case 'visual.blur': {
+        // Animated blur from_px → to_px
+        const blDur = (eff['duration_sec'] as number) ?? 1
+        const dly   = (eff['start_offset_sec'] as number) ?? 0
+        const t     = Math.max(0, Math.min(1, (elapsed - dly) / blDur))
+        const e     = easing(t, eff['easing'] as string)
+        const fb    = (eff['from_px'] as number) ?? 0
+        const tb    = (eff['to_px']   as number) ?? 4
+        s.blur += fb + (tb - fb) * e
+        break
+      }
+      case 'blur.gaussian':
+        s.blur += (eff['radius_px'] as number) ?? 4
+        break
+    }
+  }
+
+  /** Transition alkalmazása. t: 0..1 (in: 0=start, 1=végre; out: 0=végre, 1=teljes kifelé). */
+  private _applyTransition(tr: Transition, t: number, dir: 'in' | 'out', s: FrameStyle): void {
+    const e = easing(t, tr.easing as string)
+    // fromMul = mennyire alkalmazzuk a kezdő-állapotot (in: 1→0; out: 0→1)
+    const fromMul = dir === 'in' ? 1 - e : e
+
+    let kind = tr.kind
+    if (kind === 'slide' && tr['from']) {
+      const MAP: Record<string, string> = {
+        left: 'slide_left', right: 'slide_right',
+        top:  'slide_down', bottom: 'slide_up',
+      }
+      kind = (MAP[tr['from'] as string] ?? 'slide_left') as Transition['kind']
+    }
+
+    const dist = (tr['distance_px'] as number) ?? 60
+
+    switch (kind) {
+      case 'fade':
+      case 'fade_to_black':
+        s.opacity *= (1 - fromMul)
+        break
+      case 'slide_left':
+        s.translateX += fromMul *  dist
+        s.opacity    *= (1 - fromMul)
+        break
+      case 'slide_right':
+        s.translateX += fromMul * -dist
+        s.opacity    *= (1 - fromMul)
+        break
+      case 'slide_up':
+        s.translateY += fromMul *  dist
+        s.opacity    *= (1 - fromMul)
+        break
+      case 'slide_down':
+        s.translateY += fromMul * -dist
+        s.opacity    *= (1 - fromMul)
+        break
+      case 'zoom_in': {
+        const fs = (tr['from_scale'] as number) ?? 0.7
+        const cur = fs + (1 - fs) * (1 - fromMul)
+        s.scaleX *= cur; s.scaleY *= cur
+        s.opacity *= (1 - fromMul)
+        break
+      }
+      case 'zoom_out': {
+        const ts = (tr['to_scale'] as number) ?? 0.7
+        const cur = 1 + (ts - 1) * fromMul
+        s.scaleX *= cur; s.scaleY *= cur
+        s.opacity *= (1 - fromMul)
+        break
+      }
+      case 'blur_in':
+      case 'blur_out': {
+        const bx = (tr['from_px'] as number) ?? 12
+        s.blur    += bx * fromMul
+        s.opacity *= (1 - fromMul)
+        break
+      }
+      case 'dissolve':
+        s.opacity *= (1 - fromMul)
+        break
+      // 'cut' → no transition
+    }
+  }
+
+  /** Statikus effekt-ek: text shadow, neon, color filter. */
+  private applyStaticEffects(): void {
+    let cssFilter = ''
+    for (const eff of this.attachedEffects) {
+      switch (eff.kind) {
+        case 'text.neon': {
+          const c = (eff['color'] ?? eff['glow_color'] ?? '#fff') as string
+          const sz = (eff['glow_size_px'] as number) ?? 20
+          const it = (eff['intensity']   as number) ?? 1
+          this.el.style.textShadow =
+            `0 0 ${sz * 0.4 * it}px ${c},` +
+            `0 0 ${sz * it}px ${c},` +
+            `0 0 ${sz * 2 * it}px ${c}`
+          break
+        }
+        case 'text.shadow':
+          this.el.style.textShadow =
+            `${eff['offset_x'] ?? 2}px ${eff['offset_y'] ?? 2}px ` +
+            `${eff['blur'] ?? eff['blur_px'] ?? 4}px ${eff['color'] ?? 'rgba(0,0,0,0.5)'}`
+          break
+        case 'visual.color_correction':
+        case 'color.brightness': {
+          const v = eff.kind === 'color.brightness' ? (eff['value'] as number ?? 0) : (eff['brightness'] as number ?? 0)
+          if (v) cssFilter += ` brightness(${1 + v})`
+          break
+        }
+        case 'color.contrast': {
+          const v = eff['value'] as number ?? 0
+          if (v) cssFilter += ` contrast(${1 + v})`
+          break
+        }
+        case 'color.saturate': {
+          const v = eff['value'] as number ?? 1
+          cssFilter += ` saturate(${v})`
+          break
+        }
+        case 'filter.grayscale': {
+          const v = eff['strength'] as number ?? 1
+          cssFilter += ` grayscale(${v})`
+          break
+        }
+        case 'filter.cinematic': {
+          const v = eff['strength'] as number ?? 0.7
+          cssFilter += ` contrast(${1 + 0.3 * v}) saturate(${1 + 0.2 * v}) brightness(${1 - 0.05 * v})`
+          break
+        }
+      }
+    }
+    // Static filter base (dynamic blur is added per-frame)
+    if (cssFilter.trim()) this.el.dataset.staticFilter = cssFilter.trim()
+  }
+
+  /** Called once when the clip first becomes visible — nincs hatása a frame-renderre. */
+  onEnter(_fps: number): void {}
+  /** Called when the clip leaves — nincs hatása a frame-renderre. */
+  onExit(_fps: number): void {}
+
+  show(): void { this.el.classList.remove('ce2-clip--hidden') }
+  hide(): void { this.el.classList.add('ce2-clip--hidden') }
+
+  /** A frame-alapú rendszerben a JS pause-ja megáll, így a CSS animation-play-state nem kell. */
+  syncAnimationState(_playing: boolean): void { /* no-op */ }
 
   isActive(frame: number): boolean {
     return frame >= this.resolved.start_frame && frame < this.resolved.end_frame
   }
 
-  /** z-index: layer category (base) + z_within_layer override */
   zIndex(): number {
     const base: Record<string, number> = {
       music: 0, narration: 0, sfx: 0,
@@ -57,131 +365,8 @@ export abstract class BaseElement {
   private applyBaseStyles(): void {
     const c = this.resolved.clip
     this.el.style.zIndex = String(this.zIndex())
-    if (c.opacity !== undefined) {
-      this.el.style.setProperty('--ce2-opacity', String(c.opacity))
-      this.el.style.opacity = String(c.opacity)
-    }
     if (c.blend_mode) this.el.style.mixBlendMode = c.blend_mode
-  }
-
-  protected applyEffects(effects: Effect[], fps: number): void {
-    for (const effect of effects) {
-      const delay = effect['start_offset_sec'] ? `${effect['start_offset_sec']}s` : '0s'
-      const dur = effect['duration_sec'] ? `${effect['duration_sec']}s` : 'var(--ce2-clip-dur, 3s)'
-      const easing = easingToCss(effect['easing'] as string | undefined)
-
-      switch (effect.kind) {
-        case 'motion.float': {
-          const amp    = effect['amplitude_px'] ?? 6
-          const period = effect['period_sec'] ?? 2.5
-          const axis   = (effect['axis'] as string | undefined) ?? 'y'
-          this.el.style.setProperty('--ce2-float-amp', String(amp))
-          const floatName = axis === 'x' ? 'ce2-float-x' : axis === 'both' ? 'ce2-float-both' : 'ce2-float'
-          this._addEffectAnimation(`${floatName} ${period}s ${easing} ${delay} infinite`)
-          break
-        }
-        case 'motion.pulse':
-          this.el.style.setProperty('--ce2-pulse-max', String(effect['scale_max'] ?? 1.08))
-          this._addEffectAnimation(`ce2-pulse ${effect['period_sec'] ?? 1.2}s ${easing} ${delay} infinite`)
-          break
-        case 'motion.shake': {
-          const speeds: Record<string, string> = { slow: '0.6s', normal: '0.3s', fast: '0.15s' }
-          this.el.style.setProperty('--ce2-shake-amp', String(effect['intensity_px'] ?? 5))
-          this._addEffectAnimation(`ce2-shake ${speeds[effect['speed'] as string] ?? '0.3s'} ${easing} ${delay} infinite`)
-          break
-        }
-        case 'motion.move':
-          this.el.style.transition = `transform ${dur} ${easing} ${delay}`
-          this.el.style.transform = `translate(${effect['from_x'] ?? 0}px, ${effect['from_y'] ?? 0}px)`
-          requestAnimationFrame(() => {
-            this.el.style.transform = `translate(${effect['to_x'] ?? 0}px, ${effect['to_y'] ?? 0}px)`
-          })
-          break
-        case 'visual.blur':
-          this.el.style.transition = `filter ${dur} ${easing} ${delay}`
-          this.el.style.filter = `blur(${effect['from_px'] ?? 0}px)`
-          requestAnimationFrame(() => {
-            this.el.style.filter = `blur(${effect['to_px'] ?? 0}px)`
-          })
-          break
-        case 'blur.gaussian':
-          this.el.style.filter = `blur(${effect['radius_px'] ?? 4}px)`
-          break
-        case 'visual.color_correction':
-          this.el.style.filter = [
-            effect['brightness'] ? `brightness(${effect['brightness']})` : '',
-            effect['contrast']   ? `contrast(${effect['contrast']})` : '',
-            effect['saturation'] ? `saturate(${effect['saturation']})` : '',
-          ].filter(Boolean).join(' ')
-          break
-        case 'text.neon': {
-          const neonColor = (effect['color'] ?? effect['glow_color'] ?? '#fff') as string
-          const neonSize  = (effect['glow_size_px'] as number | undefined) ?? 20
-          const neonInt   = (effect['intensity'] as number | undefined) ?? 1
-          this.el.style.textShadow =
-            `0 0 ${neonSize * 0.4 * neonInt}px ${neonColor},` +
-            `0 0 ${neonSize * neonInt}px ${neonColor},` +
-            `0 0 ${neonSize * 2 * neonInt}px ${neonColor}`
-          break
-        }
-        case 'text.neon_dummy': // fallthrough prevention
-          if (effect['flicker']) {
-            this.el.style.animation = `ce2-pulse 0.15s ease-in-out infinite alternate`
-          }
-          break
-        case 'text.shadow':
-          this.el.style.textShadow =
-            `${effect['offset_x'] ?? 2}px ${effect['offset_y'] ?? 2}px ` +
-            `${(effect['blur'] ?? effect['blur_px'] ?? 4)}px ${effect['color'] ?? 'rgba(0,0,0,0.5)'}`
-          break
-      }
-    }
-  }
-
-  private _addEffectAnimation(anim: string): void {
-    this.effectAnimations.push(anim)
-    this.el.style.animation = this.effectAnimations.join(', ')
-  }
-
-  protected applyTransition(t: Transition, dir: 'in' | 'out', fps: number): void {
-    const dur    = t.duration_sec ?? 0.4
-    const easing = easingToCss(t.easing as string | undefined)
-    const dist   = t['distance_px'] ?? 60
-
-    // ZAVA: {kind:'slide', from:'left'|'right'|'top'|'bottom'} → OSS kind
-    let kind = t.kind
-    if (kind === 'slide' && t['from']) {
-      const MAP: Record<string, string> = {
-        left: 'slide_left', right: 'slide_right',
-        top:  'slide_down', bottom: 'slide_up',
-      }
-      kind = MAP[t['from'] as string] ?? 'slide_left'
-    }
-
-    const animMap: Record<string, Record<'in' | 'out', string>> = {
-      fade:        { in: 'ce2-fade-in',       out: 'ce2-fade-out' },
-      slide_left:  { in: 'ce2-slide-in-left', out: 'ce2-fade-out' },
-      slide_right: { in: 'ce2-slide-in-right',out: 'ce2-fade-out' },
-      slide_up:    { in: 'ce2-slide-in-up',   out: 'ce2-fade-out' },
-      slide_down:  { in: 'ce2-slide-in-down', out: 'ce2-fade-out' },
-      zoom_in:     { in: 'ce2-zoom-in',       out: 'ce2-zoom-out' },
-      zoom_out:    { in: 'ce2-zoom-in',       out: 'ce2-zoom-out' },
-      blur_in:     { in: 'ce2-blur-in',       out: 'ce2-blur-out' },
-      blur_out:    { in: 'ce2-blur-in',       out: 'ce2-blur-out' },
-      fade_to_black:{ in: 'ce2-fade-in',      out: 'ce2-fade-out' },
-    }
-
-    const animName = animMap[kind]?.[dir]
-    if (!animName) return
-
-    this.el.style.setProperty('--ce2-slide-dist', String(dist))
-    if (t['from_scale']) this.el.style.setProperty('--ce2-zoom-from', String(t['from_scale']))
-    if (t['to_scale'])   this.el.style.setProperty('--ce2-zoom-to',   String(t['to_scale']))
-    if (t['from_px'])    this.el.style.setProperty('--ce2-blur-px',   String(t['from_px']))
-
-    const transAnim = `${animName} ${dur}s ${easing} both`
-    this.el.style.animation = this.effectAnimations.length
-      ? `${transAnim}, ${this.effectAnimations.join(', ')}`
-      : transAnim
+    // Initial transform/opacity = identity; majd update() állítja be
+    this.el.style.opacity = String(this.baseOpacity)
   }
 }

@@ -9,7 +9,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { BrowserRenderer } from '@ce2/browser'
 import type { CE2Composition } from '@ce2/core'
 import type { Selection } from '../../state/editorState.js'
-import { setRendererRef } from '../../state/playerSync.js'
+import { setRendererRef, getSavedState, saveState } from '../../state/playerSync.js'
 import { PauseLabelsOverlay, AudioActivePanel } from '../timeline/PauseLabels.js'
 
 interface Props {
@@ -45,8 +45,10 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
   useEffect(() => {
     if (!containerRef.current) return
 
-    const prevTimeSec = rendererRef.current?.currentTimeSec ?? 0
-    const wasPlaying  = rendererRef.current?.isPlaying      ?? false
+    // Saved state from module-level (across PreviewPanel mount/unmount on mode switch)
+    const saved = getSavedState()
+    const prevTimeSec = rendererRef.current?.currentTimeSec ?? saved.time
+    const wasPlaying  = rendererRef.current?.isPlaying      ?? false  // NEM auto-play remount-kor
     rendererRef.current?.destroy()
     setRendererRef(null)
 
@@ -83,6 +85,8 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
     ]
 
     return () => {
+      // Save state BEFORE destroy — Detail/Komp váltáskor, vagy composition update-kor
+      saveState(renderer.currentTimeSec, renderer.isPlaying)
       unsubs.forEach(u => u())
       renderer.destroy()
       rendererRef.current = null

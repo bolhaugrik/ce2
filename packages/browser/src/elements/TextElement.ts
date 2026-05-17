@@ -77,6 +77,7 @@ export class TextElement extends BaseElement {
   }
 
   update(frame: number, fps: number): void {
+    super.update(frame, fps)   // ← frame-alapú transform/opacity/filter
     if (!this.typewriterActive) return
     const tw = this.resolved.clip.attached_effects?.find(e => e.kind === 'text.typewriter')
     if (!tw) return

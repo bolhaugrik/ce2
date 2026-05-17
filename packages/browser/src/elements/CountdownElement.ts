@@ -20,6 +20,7 @@ export class CountdownElement extends BaseElement {
   }
 
   update(frame: number, fps: number): void {
+    super.update(frame, fps)   // ← frame-alapú transform/opacity/filter
     this.updateNumber(frame, fps)
   }
 

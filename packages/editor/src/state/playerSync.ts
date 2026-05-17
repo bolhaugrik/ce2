@@ -11,6 +11,17 @@ let rendererRef: BrowserRenderer | null = null
 let rafId: number | null = null
 const listeners = new Set<() => void>()
 
+// Mount/unmount közti perzisztens állapot — Komp ↔ Detail váltás után is megmarad
+let savedTimeSec = 0
+let savedPlaying = false
+export function getSavedState(): { time: number; playing: boolean } {
+  return { time: savedTimeSec, playing: savedPlaying }
+}
+export function saveState(time: number, playing: boolean): void {
+  savedTimeSec = time
+  savedPlaying = playing
+}
+
 const emit = () => listeners.forEach((cb) => cb())
 
 function startPolling(): void {
