@@ -4,7 +4,7 @@ import { CE2Editor } from '@ce2/editor'
 import type { CE2Composition } from '@ce2/core'
 import { ZAVA_PROMO } from './zava-promo.js'
 
-import './index.css'
+import './tw.css'
 
 function App() {
   const handleSave = (comp: CE2Composition) => {
