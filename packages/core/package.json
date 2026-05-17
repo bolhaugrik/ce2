@@ -1,0 +1,31 @@
+{
+  "name": "@ce2/core",
+  "version": "0.1.0",
+  "description": "CE2 composition language — schema, resolver, validation",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev":   "tsup src/index.ts --format esm,cjs --dts --watch",
+    "test":  "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "workspace:*",
+    "vitest": "workspace:*",
+    "tsup": "workspace:*"
+  }
+}
