@@ -268,6 +268,11 @@ export class AnchorResolver {
       case 'until_anchor': {
         const frame = this.anchors.get(dur.anchor_ref)
         if (frame === undefined) {
+          // Special case: until_anchor referencing the CURRENT moment's end
+          // → treat like until_moment_end (resolved in second pass)
+          if (momentId && dur.anchor_ref === `moment.${momentId}.end`) {
+            return this.anchors.get(`moment.${momentId}.end`) ?? startFrame + this.secToFrames(3)
+          }
           throw new CE2AnchorMissingError(dur.anchor_ref, clip.id)
         }
         return frame + this.secToFrames(dur.offset_sec ?? 0)
