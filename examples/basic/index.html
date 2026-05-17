@@ -8,142 +8,149 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #0a0a0f;
+      background: #080810;
       color: #e2e8f0;
       font-family: system-ui, -apple-system, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 24px;
-      padding: 24px;
+      padding: 28px 16px;
+      gap: 20px;
     }
 
-    header {
-      text-align: center;
-    }
-    header h1 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      color: #94a3b8;
-      text-transform: uppercase;
-    }
-    header p {
-      font-size: 0.8rem;
-      color: #475569;
-      margin-top: 4px;
-    }
+    header { text-align: center; }
+    header h1 { font-size: 1rem; font-weight: 600; letter-spacing: .12em; color: #94a3b8; text-transform: uppercase; }
+    header p  { font-size: .75rem; color: #334155; margin-top: 3px; }
 
-    /* Player shell */
-    #player-wrap {
-      position: relative;
-      width: 300px;
-      height: 533px;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 24px 64px rgba(0,0,0,0.6);
-    }
-    #player-container {
+    /* ── Main layout ──────────────────────────────────────────────────────── */
+    .demo-layout {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
       width: 100%;
-      height: 100%;
+      max-width: 900px;
     }
 
-    /* Controls */
-    #controls {
-      width: 300px;
+    /* ── Player side ──────────────────────────────────────────────────────── */
+    .player-side {
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      align-items: center;
     }
 
-    /* Progress bar */
+    #player-wrap {
+      width: 280px;
+      height: 498px;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.7);
+    }
+    #player-container { width: 100%; height: 100%; }
+
+    #controls { width: 280px; display: flex; flex-direction: column; gap: 10px; }
+
     #progress-wrap {
-      position: relative;
-      height: 4px;
-      background: #1e293b;
-      border-radius: 2px;
-      cursor: pointer;
+      height: 4px; background: #1a1a2e; border-radius: 2px; cursor: pointer;
     }
     #progress-fill {
-      height: 100%;
+      height: 100%; width: 0%;
       background: linear-gradient(90deg, #6366f1, #a78bfa);
       border-radius: 2px;
-      width: 0%;
       pointer-events: none;
-      transition: width 0.1s linear;
-    }
-    #progress-wrap:hover #progress-fill {
-      background: linear-gradient(90deg, #818cf8, #c4b5fd);
     }
 
-    /* Buttons row */
-    .btn-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .btn-row { display: flex; align-items: center; gap: 8px; }
+
     button {
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      border-radius: 8px;
-      padding: 8px 16px;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
-      white-space: nowrap;
+      background: #161625; border: 1px solid #252540; color: #cbd5e1;
+      border-radius: 7px; padding: 7px 14px; font-size: .8rem; cursor: pointer;
+      transition: background .12s, border-color .12s;
     }
-    button:hover { background: #273549; border-color: #4f6080; }
-    button:active { transform: scale(0.97); }
+    button:hover  { background: #1e1e35; border-color: #3f3f70; }
+    button:active { transform: scale(.97); }
 
     #btn-play {
-      min-width: 80px;
-      background: #4f46e5;
-      border-color: #6366f1;
-      font-weight: 600;
+      min-width: 80px; background: #4338ca; border-color: #6366f1; font-weight: 600; color: #fff;
     }
-    #btn-play:hover { background: #4338ca; }
+    #btn-play:hover { background: #3730a3; }
 
-    .time-label {
-      font-size: 0.75rem;
-      color: #64748b;
-      font-variant-numeric: tabular-nums;
-      flex: 1;
-      text-align: right;
-    }
+    .time-label { font-size: .72rem; color: #475569; flex: 1; text-align: right; font-variant-numeric: tabular-nums; }
 
-    /* Moment indicator */
-    #moment-row {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
+    #moment-row { display: flex; gap: 5px; flex-wrap: wrap; }
     .moment-pill {
-      font-size: 0.7rem;
-      padding: 3px 10px;
-      border-radius: 20px;
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #64748b;
-      cursor: pointer;
-      transition: all 0.15s;
+      font-size: .68rem; padding: 3px 10px; border-radius: 20px;
+      background: #161625; border: 1px solid #252540; color: #475569; cursor: pointer;
     }
-    .moment-pill.active {
-      background: rgba(99, 102, 241, 0.15);
-      border-color: #6366f1;
-      color: #a5b4fc;
-    }
-    .moment-pill:hover { border-color: #4f6080; color: #94a3b8; }
+    .moment-pill.active  { background: rgba(99,102,241,.15); border-color: #6366f1; color: #a5b4fc; }
+    .moment-pill:hover   { border-color: #4f4f80; color: #94a3b8; }
 
-    /* Validation badge */
-    #status {
-      font-size: 0.7rem;
-      color: #22c55e;
-      text-align: center;
+    /* ── JSON side ────────────────────────────────────────────────────────── */
+    .json-side {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border: 1px solid #1e1e35;
+      border-radius: 12px;
+      overflow: hidden;
+      max-height: 560px;
     }
+
+    .json-header {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: #0f0f1e;
+      border-bottom: 1px solid #1e1e35;
+      padding: 0 10px;
+    }
+
+    .json-tab {
+      font-size: .72rem; padding: 9px 14px; cursor: pointer;
+      color: #475569; border: none; background: none; border-bottom: 2px solid transparent;
+      transition: color .12s, border-color .12s;
+    }
+    .json-tab:hover  { color: #94a3b8; }
+    .json-tab.active { color: #a5b4fc; border-bottom-color: #6366f1; }
+
+    .json-copy {
+      margin-left: auto; font-size: .7rem; padding: 4px 10px;
+      background: #1a1a30; border-color: #2a2a50; color: #64748b; border-radius: 5px;
+    }
+    .json-copy:hover { color: #94a3b8; }
+
+    #json-content {
+      background: #0a0a18;
+      padding: 14px 16px;
+      overflow-y: auto;
+      flex: 1;
+      font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-size: .7rem;
+      line-height: 1.6;
+      color: #8892aa;
+      white-space: pre;
+    }
+
+    /* JSON syntax colors */
+    .jk  { color: #7c9ae8; }   /* key      */
+    .js  { color: #98c379; }   /* string   */
+    .ji  { color: #e5c07b; }   /* number   */
+    .jb  { color: #c678dd; }   /* boolean  */
+    .jn  { color: #56b6c2; }   /* null     */
+
+    /* ── Status ───────────────────────────────────────────────────────────── */
+    #status { font-size: .7rem; color: #22c55e; text-align: center; }
     #status.error { color: #ef4444; }
+
+    /* ── Responsive ───────────────────────────────────────────────────────── */
+    @media (max-width: 680px) {
+      .demo-layout { flex-direction: column; align-items: center; }
+      .json-side   { width: 100%; max-width: 420px; max-height: 340px; }
+    }
   </style>
 </head>
 <body>
@@ -152,20 +159,32 @@
     <p>@ce2/browser — DOM renderer</p>
   </header>
 
-  <div id="player-wrap">
-    <div id="player-container"></div>
-  </div>
+  <div class="demo-layout">
+    <!-- Player -->
+    <div class="player-side">
+      <div id="player-wrap">
+        <div id="player-container"></div>
+      </div>
+      <div id="controls">
+        <div id="progress-wrap"><div id="progress-fill"></div></div>
+        <div class="btn-row">
+          <button id="btn-play">▶ Play</button>
+          <button id="btn-stop">■ Stop</button>
+          <span class="time-label" id="time-label">0.0s / 12.0s</span>
+        </div>
+        <div id="moment-row"></div>
+      </div>
+    </div>
 
-  <div id="controls">
-    <div id="progress-wrap">
-      <div id="progress-fill"></div>
+    <!-- JSON panel -->
+    <div class="json-side">
+      <div class="json-header">
+        <button class="json-tab active" id="json-tab-moment">Current moment</button>
+        <button class="json-tab" id="json-tab-full">Full composition</button>
+        <button class="json-copy" id="json-copy">Copy</button>
+      </div>
+      <pre id="json-content"></pre>
     </div>
-    <div class="btn-row">
-      <button id="btn-play">▶ Play</button>
-      <button id="btn-stop">■ Stop</button>
-      <span class="time-label" id="time-label">0.0s / 0.0s</span>
-    </div>
-    <div id="moment-row"></div>
   </div>
 
   <div id="status"></div>
