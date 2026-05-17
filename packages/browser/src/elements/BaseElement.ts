@@ -37,6 +37,10 @@ export abstract class BaseElement {
   show(): void  { this.el.classList.remove('ce2-clip--hidden') }
   hide(): void  { this.el.classList.add('ce2-clip--hidden') }
 
+  syncAnimationState(playing: boolean): void {
+    this.el.style.animationPlayState = playing ? 'running' : 'paused'
+  }
+
   isActive(frame: number): boolean {
     return frame >= this.resolved.start_frame && frame < this.resolved.end_frame
   }

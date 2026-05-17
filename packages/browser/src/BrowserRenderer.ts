@@ -107,8 +107,9 @@ export class BrowserRenderer {
       this.engine.on(ev, () => this.emit(ev))
     }
 
-    // Render frame 0
+    // Render frame 0, start paused
     this.onFrame(0)
+    this.syncAnimations(false)
     this.emit('ready')
   }
 
@@ -117,9 +118,9 @@ export class BrowserRenderer {
   /** @deprecated — no-op, kept for API compat. Media is resumed automatically from play(). */
   primeAudio(): void {}
 
-  play(): void   { this.engine.play(); this.resumeActiveMedia() }
-  pause(): void  { this.pauseAllMedia(); this.engine.pause() }
-  stop(): void   { this.pauseAllMedia(); this.engine.stop() }
+  play(): void   { this.engine.play(); this.resumeActiveMedia(); this.syncAnimations(true) }
+  pause(): void  { this.pauseAllMedia(); this.engine.pause(); this.syncAnimations(false) }
+  stop(): void   { this.pauseAllMedia(); this.engine.stop(); this.syncAnimations(false) }
   seek(frame: number): void { this.engine.seek(frame) }
   seekToSec(sec: number): void { this.engine.seekToSec(sec) }
 
@@ -164,6 +165,12 @@ export class BrowserRenderer {
       if (audio) audio.pause()
       const video = (el as any).video as HTMLVideoElement | undefined
       if (video) video.pause()
+    }
+  }
+
+  private syncAnimations(playing: boolean): void {
+    for (const el of this.elements) {
+      el.syncAnimationState(playing)
     }
   }
 
