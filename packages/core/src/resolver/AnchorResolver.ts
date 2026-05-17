@@ -119,12 +119,12 @@ export class AnchorResolver {
   private topologicalSort(clips: Clip[], momentId: string): Clip[] {
     const clipById = new Map(clips.map(c => [c.id, c]))
 
-    // anchor_ref → which clip id publishes it
-    const anchorPublisher = new Map<string, string>()
-    for (const clip of clips) {
-      anchorPublisher.set(`${clip.id}.start`, clip.id)
-      anchorPublisher.set(`${clip.id}.end`, clip.id)
-      anchorPublisher.set(`${clip.id}.middle`, clip.id)
+    // Infer publisher clip from anchor_ref prefix: "feat2.phase.static" → "feat2"
+    // This handles ALL derived anchors (.phase.*, .mark.*, .middle, etc.) automatically.
+    const getPublisher = (anchorRef: string): string | undefined => {
+      const dotIdx = anchorRef.indexOf('.')
+      const candidateId = dotIdx !== -1 ? anchorRef.slice(0, dotIdx) : anchorRef
+      return clipById.has(candidateId) ? candidateId : undefined
     }
 
     const deps = new Map<string, Set<string>>()
@@ -133,13 +133,13 @@ export class AnchorResolver {
 
       const startRef = this.getAnchorRef(clip.start)
       if (startRef) {
-        const publisher = anchorPublisher.get(startRef)
+        const publisher = getPublisher(startRef)
         if (publisher && publisher !== clip.id) d.add(publisher)
       }
 
       const durRef = this.getAnchorRef(clip.duration)
       if (durRef) {
-        const publisher = anchorPublisher.get(durRef)
+        const publisher = getPublisher(durRef)
         if (publisher && publisher !== clip.id) d.add(publisher)
       }
 
