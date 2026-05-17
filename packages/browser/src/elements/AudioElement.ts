@@ -7,6 +7,7 @@ export class AudioElement extends BaseElement {
   private fps: number
   private trimIn: number
   private isTts: boolean
+  private _unlockCleanup: (() => void) | null = null
 
   constructor(resolved: ResolvedClip, fps: number) {
     super(resolved)
@@ -73,15 +74,20 @@ export class AudioElement extends BaseElement {
     }
     if (!this.audio?.src) return
     this.audio.currentTime = this.trimIn
+    // Cancel any stale unlock listener before registering a new one
+    this._unlockCleanup?.()
+    this._unlockCleanup = null
     this.audio.play().catch(() => {
-      // Autoplay blocked — will play on next user interaction
       const unlock = () => {
+        this._unlockCleanup = null
         this.audio?.play().catch(() => {})
-        document.removeEventListener('click', unlock)
+      }
+      document.addEventListener('click',   unlock, { once: true })
+      document.addEventListener('keydown', unlock, { once: true })
+      this._unlockCleanup = () => {
+        document.removeEventListener('click',   unlock)
         document.removeEventListener('keydown', unlock)
       }
-      document.addEventListener('click', unlock, { once: true })
-      document.addEventListener('keydown', unlock, { once: true })
     })
   }
 
@@ -104,6 +110,8 @@ export class AudioElement extends BaseElement {
 
   show(): void { /* audio has no visual */ }
   hide(): void {
+    this._unlockCleanup?.()
+    this._unlockCleanup = null
     if (this.isTts) { window.speechSynthesis?.cancel(); return }
     if (this.audio && !this.audio.paused) this.audio.pause()
   }

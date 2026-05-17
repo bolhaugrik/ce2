@@ -66,7 +66,12 @@ export function CE2Editor({ initialComposition, onSave, style, className }: CE2E
         {viewMode === 'visual' && (
           <ModeSwitcher
             mode={editorMode}
-            onChange={setEditorMode}
+            onChange={(m) => {
+              setEditorMode(m)
+              // Komp módba váltáskor töröljük a kiválasztást — különben CE2Shell
+              // auto-switch effectje azonnal visszavált Detail-be
+              if (m === 'komp') setSelection({ kind: 'none' })
+            }}
             detailEnabled={detailEnabled}
           />
         )}

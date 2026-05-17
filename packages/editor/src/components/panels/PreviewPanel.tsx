@@ -8,7 +8,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { BrowserRenderer } from '@ce2/browser'
 import type { CE2Composition } from '@ce2/core'
 import type { Selection } from '../../state/editorState.js'
-import { setRendererRef, usePauseResume } from '../../state/playerSync.js'
+import { setRendererRef } from '../../state/playerSync.js'
 import { PauseLabelsOverlay, AudioActivePanel } from '../timeline/PauseLabels.js'
 
 interface Props {
@@ -18,19 +18,18 @@ interface Props {
 }
 
 export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullScreen }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const rendererRef = useRef<BrowserRenderer | null>(null)
-  const [playing, setPlaying] = useState(false)
-  const [timeSec, setTimeSec] = useState(0)
+  const containerRef  = useRef<HTMLDivElement>(null)
+  const rendererRef   = useRef<BrowserRenderer | null>(null)
+  const [playing,  setPlaying]  = useState(false)
+  const [timeSec,  setTimeSec]  = useState(0)
   const [totalSec, setTotalSec] = useState(1)
-  const pauseResume = usePauseResume()
 
   // Build renderer on composition change
   useEffect(() => {
     if (!containerRef.current) return
 
     const prevTimeSec = rendererRef.current?.currentTimeSec ?? 0
-    const wasPlaying = rendererRef.current?.isPlaying ?? false
+    const wasPlaying  = rendererRef.current?.isPlaying      ?? false
     rendererRef.current?.destroy()
     setRendererRef(null)
 
@@ -48,9 +47,7 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
         loop: true,
         fitContainer: true,
       })
-    } catch {
-      return
-    }
+    } catch { return }
 
     rendererRef.current = renderer
     setRendererRef(renderer)
@@ -58,22 +55,21 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
 
     if (prevTimeSec > 0) renderer.seekToSec(prevTimeSec)
 
+    // After first render, refit once layout has settled — fixes clientHeight=0 at construction time
+    requestAnimationFrame(() => { renderer.refit() })
+
     const isFirstLoad = prevTimeSec === 0 && !wasPlaying
-    if (!isFirstLoad && wasPlaying) {
-      renderer.play()
-      setPlaying(true)
-    } else {
-      setPlaying(false)
-    }
+    if (!isFirstLoad && wasPlaying) { renderer.play(); setPlaying(true) }
+    else                            { setPlaying(false) }
 
     const unsubs = [
-      renderer.on('play', () => setPlaying(true)),
+      renderer.on('play',  () => setPlaying(true)),
       renderer.on('pause', () => setPlaying(false)),
-      renderer.on('stop', () => { setPlaying(false); setTimeSec(0) }),
+      renderer.on('stop',  () => { setPlaying(false); setTimeSec(0) }),
     ]
 
     return () => {
-      unsubs.forEach((u) => u())
+      unsubs.forEach(u => u())
       renderer.destroy()
       rendererRef.current = null
       setRendererRef(null)
@@ -89,7 +85,7 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
     return () => obs.disconnect()
   }, [])
 
-  // Progress tick
+  // Progress tick (RAF loop)
   const rafRef = useRef<number>()
   useEffect(() => {
     const tick = () => {
@@ -101,21 +97,19 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
   }, [])
 
   const togglePlay = () => {
-    const r = rendererRef.current
-    if (!r) return
+    const r = rendererRef.current; if (!r) return
     if (r.isPlaying) { r.pause(); setPlaying(false) }
-    else { r.play(); setPlaying(true) }
+    else             { r.play();  setPlaying(true) }
   }
 
   // Scrubbing
-  const scrubbingRef = useRef(false)
+  const scrubbingRef  = useRef(false)
   const progressElRef = useRef<HTMLDivElement>(null)
 
   const seekFromEvent = useCallback((clientX: number) => {
-    const r = rendererRef.current; if (!r) return
+    const r    = rendererRef.current; if (!r) return
     const rect = progressElRef.current?.getBoundingClientRect(); if (!rect) return
-    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-    r.seekToSec(pct * totalSec)
+    r.seekToSec(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * totalSec)
   }, [totalSec])
 
   const handleScrubStart = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -124,61 +118,67 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
     r.pause(); setPlaying(false)
     seekFromEvent(e.clientX)
     const onMove = (ev: MouseEvent) => { if (scrubbingRef.current) seekFromEvent(ev.clientX) }
-    const onUp = () => {
+    const onUp   = () => {
       scrubbingRef.current = false
       window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('mouseup',   onUp)
     }
     window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+    window.addEventListener('mouseup',   onUp)
   }
 
   const pct = totalSec > 0 ? Math.min((timeSec / totalSec) * 100, 100) : 0
 
+  const { width: cw, height: ch } = composition.meta
+
+  // Small preview (detail mode) → fixed aspect ratio
+  const smallStyle: React.CSSProperties = {
+    width: '100%',
+    aspectRatio: `${cw}/${ch}`,
+    maxHeight: '30vh',
+  }
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', background: '#000',
-      width: '100%', ...(fullScreen ? { flex: 1, minHeight: 0 } : {}),
+      width: '100%',
+      ...(fullScreen ? { flex: 1, minHeight: 0 } : smallStyle),
     }}>
-      {/* containerRef IS the flex-1 wrapper — clientHeight is the flex-computed value (not 0) */}
+      {/* containerRef → flex-1 div; clientHeight = flex-computed (not 0) */}
       <div
         ref={containerRef}
         style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
       >
-        {/* PauseLabels overlay sits on top of the BrowserRenderer canvas */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
           <PauseLabelsOverlay composition={composition} onJumpToClip={onJumpToClip} />
         </div>
       </div>
 
-      {/* Audio active panel */}
       <AudioActivePanel composition={composition} onJumpToClip={onJumpToClip} />
 
       {/* Controls */}
-      <div className="flex-shrink-0 bg-gray-900 px-2 py-1.5">
-        {/* Progress bar */}
+      <div style={{ flexShrink: 0, background: '#111827', padding: '6px 8px' }}>
         <div
           ref={progressElRef}
-          className="h-1.5 bg-gray-700 rounded cursor-ew-resize mb-1.5 relative"
+          style={{ height: 6, background: '#374151', borderRadius: 3, cursor: 'ew-resize', marginBottom: 6, position: 'relative' }}
           onMouseDown={handleScrubStart}
         >
-          <div className="h-full bg-white rounded" style={{ width: `${pct}%` }} />
+          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#fff', borderRadius: 3, width: `${pct}%` }} />
         </div>
-
-        <div className="flex items-center gap-1.5">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
             onClick={togglePlay}
-            className="px-2 py-0.5 text-xs bg-white text-gray-900 rounded font-semibold hover:bg-gray-100"
+            style={{ padding: '2px 8px', fontSize: 11, background: '#fff', color: '#111', borderRadius: 3, border: 'none', cursor: 'pointer', fontWeight: 700 }}
           >
             {playing ? '⏸' : '▶'}
           </button>
           <button
             onClick={() => { rendererRef.current?.stop(); setPlaying(false) }}
-            className="px-2 py-0.5 text-xs bg-gray-700 text-white rounded hover:bg-gray-600"
+            style={{ padding: '2px 8px', fontSize: 11, background: '#374151', color: '#fff', borderRadius: 3, border: 'none', cursor: 'pointer' }}
           >
             ■
           </button>
-          <span className="text-[10px] text-gray-400 font-mono ml-1">
+          <span style={{ fontSize: 10, color: '#9ca3af', fontFamily: 'monospace', marginLeft: 4 }}>
             {timeSec.toFixed(1)}s / {totalSec.toFixed(1)}s
           </span>
         </div>
