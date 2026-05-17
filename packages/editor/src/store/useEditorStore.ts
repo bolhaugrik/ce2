@@ -32,6 +32,10 @@ export interface EditorStore {
   removeClip: (clipId: string) => void
   updateClip: (clipId: string, patch: Partial<Clip>) => void
 
+  // ── Reorder ───────────────────────────────────────────────────────────────
+  moveMoment: (id: string, dir: 'up' | 'down') => void
+  moveClip:   (clipId: string, dir: 'up' | 'down') => void
+
   // ── Globals ───────────────────────────────────────────────────────────────
   updateGlobals: (patch: Partial<CE2Composition['globals']>) => void
 
@@ -161,6 +165,27 @@ export const useEditorStore = create<EditorStore>()(
         Object.assign(clip, patch)
       })
       s.isDirty = true
+    }),
+
+    moveMoment: (id, dir) => set(s => {
+      const arr = s.composition.moments
+      const idx = arr.findIndex(m => m.id === id)
+      const to  = dir === 'up' ? idx - 1 : idx + 1
+      if (idx < 0 || to < 0 || to >= arr.length) return
+      ;[arr[idx], arr[to]] = [arr[to], arr[idx]]
+      s.isDirty = true
+    }),
+
+    moveClip: (clipId, dir) => set(s => {
+      for (const m of s.composition.moments) {
+        const idx = m.layers.findIndex(c => c.id === clipId)
+        if (idx === -1) continue
+        const to = dir === 'up' ? idx - 1 : idx + 1
+        if (to < 0 || to >= m.layers.length) break
+        ;[m.layers[idx], m.layers[to]] = [m.layers[to], m.layers[idx]]
+        s.isDirty = true
+        break
+      }
     }),
 
     updateGlobals: (patch) => set(s => {

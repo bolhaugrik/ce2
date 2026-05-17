@@ -74,11 +74,40 @@ export function PreviewPanel() {
     else             { r.play();  setPlaying(true) }
   }
 
-  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const r = rendererRef.current; if (!r) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    r.seekToSec(((e.clientX - rect.left) / rect.width) * totalSec)
+  // ── Scrubbing ────────────────────────────────────────────────────────────
+  const scrubbingRef   = useRef(false)
+  const wasPlayingRef  = useRef(false)
+  const progressElRef  = useRef<HTMLDivElement>(null)
+
+  const seekFromEvent = useCallback((clientX: number) => {
+    const r    = rendererRef.current; if (!r) return
+    const rect = progressElRef.current?.getBoundingClientRect(); if (!rect) return
+    const pct  = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    r.seekToSec(pct * totalSec)
   }, [totalSec])
+
+  const handleScrubStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    const r = rendererRef.current; if (!r) return
+    scrubbingRef.current  = true
+    wasPlayingRef.current = r.isPlaying
+    r.pause()
+    setPlaying(false)
+    seekFromEvent(e.clientX)
+
+    const onMove = (ev: MouseEvent) => { if (scrubbingRef.current) seekFromEvent(ev.clientX) }
+    const onUp   = () => {
+      scrubbingRef.current = false
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup',   onUp)
+      // Stay paused — let user decide whether to resume
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
+  }
+
+  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    seekFromEvent(e.clientX)
+  }, [seekFromEvent])
 
   const pct = totalSec > 0 ? Math.min((timeSec / totalSec) * 100, 100) : 0
 
@@ -92,7 +121,9 @@ export function PreviewPanel() {
         </div>
 
         <div className="ce2-preview__controls">
-          <div className="ce2-preview__progress" onClick={handleProgressClick}>
+          <div className="ce2-preview__progress" ref={progressElRef}
+            onMouseDown={handleScrubStart} onClick={handleProgressClick}
+            style={{ cursor: 'ew-resize' }}>
             <div className="ce2-preview__progress-fill" style={{ width: `${pct}%` }} />
           </div>
           <div className="ce2-preview__btn-row">
