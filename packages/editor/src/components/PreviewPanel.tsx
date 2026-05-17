@@ -20,11 +20,18 @@ export function PreviewPanel() {
     const wasPlaying   = rendererRef.current?.isPlaying      ?? true  // auto-play on first load only
     rendererRef.current?.destroy()
 
+    // Build asset URL map from composition.assets
+    const assetMap: Record<string, string> = {}
+    for (const a of composition.assets) {
+      if (a.url) assetMap[a.id] = a.url
+    }
+
     let renderer: BrowserRenderer
     try {
       renderer = new BrowserRenderer({
         container: containerRef.current,
         composition,
+        assets: assetMap,
         loop: true,
         fitContainer: true,
       })

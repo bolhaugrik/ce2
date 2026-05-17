@@ -63,10 +63,20 @@ export abstract class BaseElement {
       const easing = easingToCss(effect['easing'] as string | undefined)
 
       switch (effect.kind) {
-        case 'motion.float':
-          this.el.style.setProperty('--ce2-float-amp', String(effect['amplitude_px'] ?? 6))
-          this.el.style.animation = `ce2-float ${effect['period_sec'] ?? 2.5}s ${easing} ${delay} infinite`
+        case 'motion.float': {
+          const amp    = effect['amplitude_px'] ?? 6
+          const period = effect['period_sec'] ?? 2.5
+          const axis   = (effect['axis'] as string | undefined) ?? 'y'
+          this.el.style.setProperty('--ce2-float-amp', String(amp))
+          if (axis === 'x') {
+            this.el.style.animation = `ce2-float-x ${period}s ${easing} ${delay} infinite`
+          } else if (axis === 'both') {
+            this.el.style.animation = `ce2-float-both ${period}s ${easing} ${delay} infinite`
+          } else {
+            this.el.style.animation = `ce2-float ${period}s ${easing} ${delay} infinite`
+          }
           break
+        }
         case 'motion.pulse':
           this.el.style.setProperty('--ce2-pulse-max', String(effect['scale_max'] ?? 1.08))
           this.el.style.animation = `ce2-pulse ${effect['period_sec'] ?? 1.2}s ${easing} ${delay} infinite`

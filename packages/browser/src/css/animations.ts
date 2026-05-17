@@ -5,6 +5,15 @@ const CSS = `
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(calc(var(--ce2-float-amp, 6) * 1px)); }
 }
+@keyframes ce2-float-x {
+  0%, 100% { transform: translateX(0px); }
+  50%       { transform: translateX(calc(var(--ce2-float-amp, 6) * 1px)); }
+}
+@keyframes ce2-float-both {
+  0%, 100% { transform: translate(0px, 0px); }
+  25%      { transform: translate(calc(var(--ce2-float-amp, 6) * 0.7px), calc(var(--ce2-float-amp, 6) * -1px)); }
+  75%      { transform: translate(calc(var(--ce2-float-amp, 6) * -0.7px), calc(var(--ce2-float-amp, 6) * 1px)); }
+}
 @keyframes ce2-pulse {
   0%, 100% { transform: scale(1); }
   50%       { transform: scale(var(--ce2-pulse-max, 1.08)); }

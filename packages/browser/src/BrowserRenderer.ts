@@ -13,6 +13,7 @@ import { VideoElement } from './elements/VideoElement.js'
 import { AudioElement } from './elements/AudioElement.js'
 import { ShapeElement } from './elements/ShapeElement.js'
 import { BaseElement } from './elements/BaseElement.js'
+import { CountdownElement } from './elements/CountdownElement.js'
 
 export interface BrowserRendererOptions {
   container: HTMLElement
@@ -112,7 +113,17 @@ export class BrowserRenderer {
 
   // ─── Public API ─────────────────────────────────────────────────────────────
 
-  play(): void   { this.engine.play() }
+  /** Call during user gesture (e.g. play button click) to unlock audio */
+  primeAudio(): void {
+    for (const el of this.elements) {
+      const audio = (el as any).audio as HTMLAudioElement | undefined
+      if (audio && audio.src) {
+        audio.play().then(() => { audio.pause(); audio.currentTime = 0 }).catch(() => {})
+      }
+    }
+  }
+
+  play(): void   { this.primeAudio(); this.engine.play() }
   pause(): void  { this.engine.pause() }
   stop(): void   { this.engine.stop() }
   seek(frame: number): void { this.engine.seek(frame) }
@@ -214,8 +225,17 @@ export class BrowserRenderer {
           ae.setUrl(assets[src.asset_id])
         }
         el = ae
+      } else if (src.kind === 'computed') {
+        // Resolve bundle inputs for computed sources
+        const bundleInputs: Record<string, unknown> = {}
+        if (clip.bundle_id) {
+          const bundle = opts.composition.bundles.find(b => b.id === clip.bundle_id)
+          if (bundle) Object.assign(bundleInputs, bundle.inputs)
+        }
+        const mergedInputs = { ...src.inputs, ...bundleInputs }
+        el = new CountdownElement(rc, fps, mergedInputs)
       } else {
-        // Fallback: empty div (computed, tts not yet resolved, etc.)
+        // Fallback: empty div (tts not yet resolved, etc.)
         el = new TextElement(rc)
       }
 

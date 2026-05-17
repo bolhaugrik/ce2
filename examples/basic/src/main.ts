@@ -268,9 +268,16 @@ statusEl.textContent = `✓ Valid · ${composition.moments.length} moments · ${
 
 const TOTAL_SEC = 12
 
+// Build asset URL map from composition.assets
+const assetMap: Record<string, string> = {}
+for (const a of composition.assets) {
+  if (a.url) assetMap[a.id] = a.url
+}
+
 const renderer = new BrowserRenderer({
   container: document.getElementById('player-container')!,
   composition,
+  assets: assetMap,
   loop: true,
   fitContainer: true,
 })

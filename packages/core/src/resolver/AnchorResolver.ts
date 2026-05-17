@@ -104,10 +104,13 @@ export class AnchorResolver {
     this.anchors.set(`moment.${moment.id}.end`, momentEndFrame)
 
     for (const rc of result) {
-      if (rc.clip.duration.kind === 'until_moment_end') {
-        const newEndFrame = momentEndFrame
-        this.registerClipAnchors(rc.clip, rc.start_frame, newEndFrame)
-        rc.end_frame = newEndFrame
+      const dur = rc.clip.duration
+      const needsUpdate =
+        dur.kind === 'until_moment_end' ||
+        (dur.kind === 'until_anchor' && dur.anchor_ref === `moment.${moment.id}.end`)
+      if (needsUpdate) {
+        this.registerClipAnchors(rc.clip, rc.start_frame, momentEndFrame)
+        rc.end_frame = momentEndFrame
       }
     }
 
