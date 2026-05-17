@@ -136,9 +136,12 @@ export const PreviewPanel: React.FC<Props> = ({ composition, onJumpToClip, fullS
   const pct = totalSec > 0 ? Math.min((timeSec / totalSec) * 100, 100) : 0
 
   return (
-    <div className={`flex flex-col bg-black ${fullScreen ? 'w-full h-full' : 'w-full'}`}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', background: '#000',
+      width: '100%', ...(fullScreen ? { flex: 1, minHeight: 0 } : {}),
+    }}>
       {/* Canvas area with overlays */}
-      <div className="flex-1 relative min-h-0 flex items-center justify-center">
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <div
           ref={containerRef}
           style={{ width: '100%', height: '100%', position: 'relative' }}

@@ -131,19 +131,18 @@ export const CE2Shell: React.FC<Props> = ({
     [composition, setComposition],
   )
 
+  const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }
+
   return (
-    <div className="flex flex-1 overflow-hidden h-full">
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%' }}>
       {editorMode === 'komp' ? (
         /* KOMP mód: 60% Vászon + 40% Preview/MiniMap */
         <>
-          <div
-            className="bg-white overflow-hidden flex flex-col min-h-0 border-r border-gray-200/50"
-            style={{ width: '60%' }}
-          >
-            <div className="flex-shrink-0">
+          <div style={{ ...col, width: '60%', background: '#fff', borderRight: '1px solid #e5e7eb' }}>
+            <div style={{ flexShrink: 0 }}>
               <NowStrip composition={composition} onJumpToClip={onSelect} />
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
               <CanvasPanel
                 composition={composition}
                 selection={selection}
@@ -157,14 +156,11 @@ export const CE2Shell: React.FC<Props> = ({
               />
             </div>
           </div>
-          <div
-            className="bg-gray-100 overflow-hidden flex flex-col min-h-0"
-            style={{ width: '40%' }}
-          >
-            <div className="flex-1 min-h-0 flex items-center justify-center bg-gray-100">
+          <div style={{ ...col, width: '40%', background: '#f3f4f6' }}>
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#f3f4f6' }}>
               <PreviewPanel composition={composition} fullScreen onJumpToClip={onSelect} />
             </div>
-            <div className="flex-shrink-0">
+            <div style={{ flexShrink: 0 }}>
               <MiniMap composition={composition} onJumpToClip={onSelect} />
             </div>
           </div>
@@ -172,16 +168,10 @@ export const CE2Shell: React.FC<Props> = ({
       ) : (
         /* DETAIL mód: 22% Kontextus + 56% Detail + 22% Preview kicsi */
         <>
-          <div
-            className="bg-white overflow-hidden border-r border-gray-200/50"
-            style={{ width: '22%' }}
-          >
+          <div style={{ ...col, width: '22%', background: '#fff', borderRight: '1px solid #e5e7eb' }}>
             <ContextRail composition={composition} selection={selection} onSelect={onSelect} />
           </div>
-          <div
-            className="bg-white overflow-hidden flex flex-col min-h-0 border-r border-gray-200/50"
-            style={{ width: '56%' }}
-          >
+          <div style={{ ...col, width: '56%', background: '#fff', borderRight: '1px solid #e5e7eb' }}>
             <DetailDispatch
               composition={composition}
               selection={selection}
@@ -193,21 +183,17 @@ export const CE2Shell: React.FC<Props> = ({
               onUpdateComposition={(updater) => setComposition(updater(composition))}
             />
           </div>
-          <div
-            className="bg-gray-100 overflow-hidden flex flex-col min-h-0"
-            style={{ width: '22%' }}
-          >
-            <div className="flex-shrink-0 bg-gray-100">
+          <div style={{ ...col, width: '22%', background: '#f3f4f6' }}>
+            <div style={{ flexShrink: 0 }}>
               <PreviewPanel composition={composition} onJumpToClip={onSelect} />
             </div>
-            <div className="flex-shrink-0">
+            <div style={{ flexShrink: 0 }}>
               <MiniMap composition={composition} onJumpToClip={onSelect} />
             </div>
-            <div className="flex-1 min-h-0 px-3 py-3 text-[11px] text-gray-500 overflow-y-auto">
-              <div className="text-[9px] uppercase font-bold mb-1 text-gray-900">Tipp</div>
-              <p className="leading-relaxed">
-                Detail módban szerkesztesz egy elemet. A bal oldalon a Komp szerkezete látszik
-                (kontextus). Vissza a Komp módba: kattints a 📝 Komp gombra a topbar-on.
+            <div style={{ flex: 1, minHeight: 0, padding: '12px', fontSize: 11, color: '#6b7280', overflowY: 'auto' }}>
+              <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 700, marginBottom: 4, color: '#111827' }}>Tipp</div>
+              <p style={{ lineHeight: 1.5 }}>
+                Detail módban szerkesztesz egy elemet. Vissza a Komp módba: kattints a 📝 Komp gombra.
               </p>
             </div>
           </div>

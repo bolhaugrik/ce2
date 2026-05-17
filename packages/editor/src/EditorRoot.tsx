@@ -108,7 +108,7 @@ export function CE2Editor({ initialComposition, onSave, style, className }: CE2E
       </div>
 
       {/* Main area */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
         {viewMode === 'visual' ? (
           <CE2Shell
             composition={composition}
