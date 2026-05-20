@@ -81,7 +81,7 @@ export const ClipDetailPanel: React.FC<Props> = ({ clip, composition, onUpdate, 
             onUpdateComposition={onUpdateComposition}
           />
         )}
-        {tab === 'appearance' && <AppearanceTab clip={clip} onUpdate={onUpdate} />}
+        {tab === 'appearance' && <AppearanceTab clip={clip} composition={composition} onUpdate={onUpdate} />}
         {tab === 'timing' && (
           <TimingTab
             clip={clip}

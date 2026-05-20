@@ -1,17 +1,6 @@
 import type { ResolvedClip } from '@ce2/core'
 import { BaseElement } from './BaseElement.js'
 
-const ANCHOR_FLEX: Record<string, { justify: string; align: string }> = {
-  'top-left':      { justify: 'flex-start', align: 'flex-start' },
-  'top-center':    { justify: 'center',     align: 'flex-start' },
-  'top-right':     { justify: 'flex-end',   align: 'flex-start' },
-  'middle-left':   { justify: 'flex-start', align: 'center' },
-  'middle-center': { justify: 'center',     align: 'center' },
-  'middle-right':  { justify: 'flex-end',   align: 'center' },
-  'bottom-left':   { justify: 'flex-start', align: 'flex-end' },
-  'bottom-center': { justify: 'center',     align: 'flex-end' },
-  'bottom-right':  { justify: 'flex-end',   align: 'flex-end' },
-}
 
 export class CountdownElement extends BaseElement {
   private inputs: Record<string, unknown>
@@ -44,30 +33,10 @@ export class CountdownElement extends BaseElement {
     this.updateNumber(frame, fps)
   }
 
-  /** Pozíció — bundle.inputs.position alapján */
   private applyLayout(): void {
-    const pos = this.inputs.position as any
-
-    // Default: middle-center
-    let key = 'middle-center'
-
-    if (pos?.kind === 'preset') {
-      key = pos.value
-    } else if (pos?.kind === 'xy') {
-      // XY mód: anchored top-left + inner translate
-      key = 'top-left'
-    }
-
-    const flex = ANCHOR_FLEX[key] ?? ANCHOR_FLEX['middle-center']
-    this.el.style.justifyContent = flex.justify
-    this.el.style.alignItems     = flex.align
-
-    if (pos?.kind === 'xy') {
-      const x = Math.round(((pos.x_pct as number) ?? 50) / 100 * 1080)
-      const y = Math.round(((pos.y_pct as number) ?? 50) / 100 * 1920)
-      // translate(-50%, -50%) hogy az x_pct/y_pct a center-en legyen
-      this.inner.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`
-    }
+    // Pozicionálás kizárólag clip.position (SpatialAnchor) alapján történik.
+    this.el.style.justifyContent = 'center'
+    this.el.style.alignItems     = 'center'
   }
 
   private updateNumber(frame: number, _fps: number): void {

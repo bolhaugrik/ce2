@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { PositionSchema } from './position.js'
+export * from './position.js'
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
@@ -53,7 +55,6 @@ export const TextPayloadSchema = z.object({
   text_transform:  z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(),
   max_width_pct:   z.number().optional(), // ZAVA compat
   lines:           z.array(z.string()).optional(), // ZAVA compat
-  position:        z.record(z.unknown()).optional(), // accept both OSS and ZAVA position formats
 }).passthrough()
 
 // ─── AudioMarker (CE2.16d) ────────────────────────────────────────────────────
@@ -107,7 +108,10 @@ export const ClipSourceSchema = z.discriminatedUnion('kind', [
 
 export const ClipSchema = z.object({
   id: z.string().min(1),
+  /** Human-readable alias used in SpatialAnchor refs, e.g. "CTA" → position: "CTA.below" */
+  name: z.string().optional(),
   label: z.string().optional(),
+  position: PositionSchema.optional(),
   layer: z.enum(['music', 'narration', 'sfx', 'video', 'pixel', 'vector']),
   source: ClipSourceSchema,
   start: TimeAnchorSchema,

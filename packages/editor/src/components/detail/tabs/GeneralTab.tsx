@@ -39,6 +39,20 @@ export const GeneralTab: React.FC<Props> = ({ clip, onUpdate }) => {
             placeholder={clip.id}
           />
         </Field>
+        <Field
+          label="Alias (name)"
+          helper={'Pozíció-horgony neve: csak a-z, A-Z, 0-9, kötőjel, alulvonás. Pl. "CTA", "title-1".'}
+        >
+          <TextInput
+            value={(clip as any).name ?? ''}
+            onChange={(v) => {
+              // Csak ASCII alfanumerikus + kötőjel + alulvonás engedélyezett
+              const cleaned = v.replace(/[^a-zA-Z0-9_-]/g, '')
+              onUpdate((c) => ({ ...c, name: cleaned || undefined } as any))
+            }}
+            placeholder="pl. CTA, title, logo"
+          />
+        </Field>
         <Field label="ID" helper="Read-only — anchor referencia ide mutathat">
           <TextInput value={clip.id} onChange={() => undefined} />
         </Field>

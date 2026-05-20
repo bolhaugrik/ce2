@@ -51,6 +51,11 @@ export function PreviewPanel() {
     if (!isFirstLoad && wasPlaying) { renderer.play(); setPlaying(true) }
     else                            { setPlaying(false) }
 
+    // Deferred spatial layout pass: after the browser paints, elements are
+    // measurable (not display:none). Re-resolves SpatialAnchor positions with
+    // correct getBoundingClientRect values.
+    const layoutRaf = requestAnimationFrame(() => renderer.resolveLayout())
+
     const unsubs = [
       renderer.on('play',          () => setPlaying(true)),
       renderer.on('pause',         () => setPlaying(false)),
@@ -58,7 +63,12 @@ export function PreviewPanel() {
       renderer.on('moment-change', (id) => setMomentId(id as string)),
     ]
 
-    return () => { unsubs.forEach(u => u()); renderer.destroy(); rendererRef.current = null }
+    return () => {
+      cancelAnimationFrame(layoutRaf)
+      unsubs.forEach(u => u())
+      renderer.destroy()
+      rendererRef.current = null
+    }
   }, [composition])
 
   // Refit when panel resizes

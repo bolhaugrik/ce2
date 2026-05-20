@@ -153,20 +153,35 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
   const s = clip.source
 
   if (s.kind === 'text') {
+    const p = s.payload as any
+
     const updateTextPayload = (patch: Partial<Extract<ClipSource, { kind: 'text' }>['payload']>) => {
       onUpdate((c) => {
         if (c.source.kind !== 'text') return c
         return { ...c, source: { ...c.source, payload: { ...c.source.payload, ...patch } } }
       })
     }
+
+    // ── Normalizált értékek (TextElement-lel azonos prioritás) ────────────────
+    // content > text (TextElement: raw.content ?? raw.text)
+    const textValue   = p.content ?? p.text ?? ''
+    // text_align > align (TextElement: raw.text_align ?? raw.align)
+    const alignValue  = p.text_align ?? p.align ?? 'center'
+    // font_size > font_size_pct (TextElement: raw.font_size ?? font_size_pct→px)
+    const fontSizePx  = p.font_size ?? (p.font_size_pct != null ? Math.round(p.font_size_pct / 100 * 1920) : 32)
+    // letter_spacing > letter_spacing_em (TextElement normalizes em→px)
+    const letterSpEm  = p.letter_spacing_em ?? (p.letter_spacing != null && fontSizePx > 0
+      ? +(p.letter_spacing / fontSizePx).toFixed(3)
+      : 0)
+
     return (
       <>
         <Section title="Szöveg">
-          <Field label="Szöveg">
+          <Field label="Tartalom">
             <TextInput
               multiline
-              value={s.payload.text ?? ''}
-              onChange={(v) => updateTextPayload({ text: v })}
+              value={textValue}
+              onChange={(v) => updateTextPayload({ content: v } as any)}
             />
           </Field>
         </Section>
@@ -174,14 +189,24 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
         <Section title="Tipográfia">
           <Field label="Font család">
             <SelectInput
-              value={s.payload.font_family ?? 'Inter'}
+              value={p.font_family ?? 'Inter'}
               onChange={(v) => updateTextPayload({ font_family: v })}
               options={FONT_OPTIONS}
             />
           </Field>
+          <Field label="Méret (px)">
+            <NumberInput
+              value={fontSizePx}
+              onChange={(v) => updateTextPayload({ font_size: v, font_size_pct: undefined } as any)}
+              min={8}
+              max={400}
+              step={1}
+              showSlider
+            />
+          </Field>
           <Field label="Vastagság (weight)">
             <SelectInput
-              value={String(s.payload.font_weight ?? 700)}
+              value={String(p.font_weight ?? 700)}
               onChange={(v) => updateTextPayload({ font_weight: v })}
               options={WEIGHT_OPTIONS}
             />
@@ -189,31 +214,21 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
           <Field label=" ">
             <Toggle
               label="Dőlt (italic)"
-              value={s.payload.font_style === 'italic'}
+              value={p.font_style === 'italic'}
               onChange={(v) => updateTextPayload({ font_style: v ? 'italic' : 'normal' })}
             />
           </Field>
           <Field label="Nagy/kis betűk">
             <SelectInput
-              value={s.payload.text_transform ?? 'none'}
+              value={p.text_transform ?? 'none'}
               onChange={(v) => updateTextPayload({ text_transform: v as any })}
               options={TRANSFORM_OPTIONS}
             />
           </Field>
-          <Field label="Méret (% vászon-magasság)">
-            <NumberInput
-              value={s.payload.font_size_pct ?? 9}
-              onChange={(v) => updateTextPayload({ font_size_pct: v })}
-              min={3}
-              max={20}
-              step={0.5}
-              showSlider
-            />
-          </Field>
           <Field label="Betűköz (em)" helper="Negatív → szorosabb, pozitív → tágabb">
             <NumberInput
-              value={s.payload.letter_spacing_em ?? 0}
-              onChange={(v) => updateTextPayload({ letter_spacing_em: v })}
+              value={letterSpEm}
+              onChange={(v) => updateTextPayload({ letter_spacing_em: v, letter_spacing: undefined } as any)}
               min={-0.1}
               max={0.5}
               step={0.01}
@@ -222,7 +237,7 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
           </Field>
           <Field label="Sortávolság">
             <NumberInput
-              value={s.payload.line_height ?? 1.15}
+              value={p.line_height ?? 1.15}
               onChange={(v) => updateTextPayload({ line_height: v })}
               min={0.8}
               max={2.5}
@@ -235,24 +250,24 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
         <Section title="Szín & igazítás">
           <Field label="Szín">
             <ColorInput
-              value={s.payload.color ?? '#ffffff'}
+              value={p.color ?? '#ffffff'}
               onChange={(v) => updateTextPayload({ color: v })}
             />
           </Field>
           <Field label="Vízszintes igazítás">
             <SelectInput
-              value={s.payload.align ?? 'center'}
-              onChange={(v) => updateTextPayload({ align: v as 'left' | 'center' | 'right' })}
+              value={alignValue}
+              onChange={(v) => updateTextPayload({ text_align: v as any, align: undefined } as any)}
               options={[
-                { value: 'left', label: 'Bal' },
+                { value: 'left',   label: 'Bal'   },
                 { value: 'center', label: 'Közép' },
-                { value: 'right', label: 'Jobb' },
+                { value: 'right',  label: 'Jobb'  },
               ]}
             />
           </Field>
           <Field label="Max szélesség (%)">
             <NumberInput
-              value={s.payload.max_width_pct ?? 80}
+              value={p.max_width_pct ?? 80}
               onChange={(v) => updateTextPayload({ max_width_pct: v })}
               min={10}
               max={100}
@@ -260,13 +275,6 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
               showSlider
             />
           </Field>
-        </Section>
-
-        <Section title="Pozíció">
-          <PositionPicker
-            value={s.payload.position as any}
-            onChange={(v) => updateTextPayload({ position: v as any })}
-          />
         </Section>
       </>
     )
@@ -370,39 +378,20 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
         </Section>
 
         {isImageOrVideo && (
-          <>
-            <Section title="Méret">
-              <Field
-                label="Alap nagyítottság (scale)"
-                helper="1 = teljes vászon (cover), 0.5 = fél, 2 = duplázott"
-              >
-                <NumberInput
-                  value={s.scale ?? 1}
-                  onChange={(v) =>
-                    onUpdate((c) => {
-                      if (c.source.kind !== 'asset') return c
-                      return { ...c, source: { ...c.source, scale: v } }
-                    })
-                  }
-                  min={0.1}
-                  max={3}
-                  step={0.05}
-                  showSlider
-                />
-              </Field>
-            </Section>
-            <Section title="Pozíció">
-              <PositionPicker
-                value={s.position as any}
+          <Section title="Méret">
+            <Field label="Nagyítottság (scale)" helper="1 = cover, 0.5 = fél méret, 2 = dupla">
+              <NumberInput
+                value={(s as any).scale ?? 1}
                 onChange={(v) =>
                   onUpdate((c) => {
                     if (c.source.kind !== 'asset') return c
-                    return { ...c, source: { ...c.source, position: v as any } }
+                    return { ...c, source: { ...c.source, scale: v } as any }
                   })
                 }
+                min={0.1} max={3} step={0.05} showSlider
               />
-            </Section>
-          </>
+            </Field>
+          </Section>
         )}
       </>
     )
@@ -510,9 +499,6 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
       }))
     }
 
-    // Position default ha még nincs definiálva
-    const currentPos = isPositionValue(bundle.inputs.position) ? bundle.inputs.position : undefined
-
     return (
       <>
         <Section title={`↻ ${bundle.kind} (computed)`}>
@@ -559,12 +545,7 @@ export const ContentTab: React.FC<Props> = ({ clip, composition, onUpdate, onUpd
           })}
         </Section>
 
-        <Section title="Pozíció (bundle)">
-          <PositionPicker
-            value={currentPos}
-            onChange={(v) => updateInput('position', v)}
-          />
-        </Section>
+        {/* Pozíció bundle inputként megmarad — bundle-specifikus pozíció */}
       </>
     )
   }

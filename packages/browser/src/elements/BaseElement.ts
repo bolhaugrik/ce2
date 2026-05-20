@@ -371,6 +371,17 @@ export abstract class BaseElement {
     return (base[this.resolved.clip.layer] ?? 0) + (this.resolved.clip.z_within_layer ?? 0)
   }
 
+  /**
+   * Switch this element to a specific canvas position with content-sized dimensions.
+   * Called by SpatialAnchorResolver for clips with clip.position set.
+   */
+  setAbsolutePosition(x: number, y: number): void {
+    this.el.style.left   = `${x}px`
+    this.el.style.top    = `${y}px`
+    this.el.style.width  = 'auto'
+    this.el.style.height = 'auto'
+  }
+
   private applyBaseStyles(): void {
     const c = this.resolved.clip
     this.el.style.zIndex = String(this.zIndex())

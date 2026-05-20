@@ -1,6 +1,7 @@
 import { CE2CompositionSchema } from '../schema/index.js'
 import type { CE2Composition, Clip } from '../schema/index.js'
 import { AnchorResolver } from '../resolver/AnchorResolver.js'
+import { parseSpatialAnchor } from '../resolver/parseSpatialAnchor.js'
 
 export interface ValidationError {
   code: string
@@ -106,6 +107,26 @@ export function validateComposition(raw: unknown): ValidationResult {
           path: `clips.${clip.id}.source.trim`,
         })
       }
+    }
+  }
+
+  // 6b. SpatialAnchor ref integrity
+  const clipNames = new Set(
+    allClips(comp)
+      .map(c => (c as any).name as string | undefined)
+      .filter((n): n is string => !!n)
+  )
+  for (const clip of allClips(comp)) {
+    const pos = (clip as any).position
+    if (!pos) continue
+    const parsed = parseSpatialAnchor(pos)
+    if (!parsed) continue
+    if (parsed.ref !== 'screen' && !clipNames.has(parsed.ref)) {
+      errors.push({
+        code: 'SPATIAL_ANCHOR_REF',
+        message: `Clip "${clip.id}" position references unknown name "${parsed.ref}" — add name: "${parsed.ref}" to the target clip, or use "screen"`,
+        path: `clips.${clip.id}.position`,
+      })
     }
   }
 

@@ -7,6 +7,7 @@ import {
 } from '@ce2/core'
 import { PlaybackEngine, type PlaybackEventType } from './PlaybackEngine.js'
 import { injectStyles } from './css/animations.js'
+import { resolveClipPositions } from './SpatialAnchorResolver.js'
 import { TextElement } from './elements/TextElement.js'
 import { ImageElement } from './elements/ImageElement.js'
 import { VideoElement } from './elements/VideoElement.js'
@@ -39,6 +40,7 @@ export class BrowserRenderer {
   private fps: number
   private _totalFrames = 1
   private listeners = new Map<RendererEventType, Set<(...args: unknown[]) => void>>()
+  private _layoutRaf: number | null = null
 
   constructor(private opts: BrowserRendererOptions) {
     const validation = validateComposition(opts.composition)
@@ -79,12 +81,23 @@ export class BrowserRenderer {
     this.canvas = this.buildCanvas()
     opts.container.appendChild(this.canvas)
 
-    // Create DOM elements for all clips, sorted by z-index
+    // Create DOM elements for all clips, sorted by z-index (not hidden yet — needed for spatial layout)
     this.elements = this.buildElements()
     const sorted = [...this.elements].sort((a, b) => a.zIndex() - b.zIndex())
     for (const el of sorted) {
       this.canvas.appendChild(el.el)
     }
+
+    // Resolve clip.position (absolute + SpatialAnchor) before hiding elements
+    resolveClipPositions(
+      this.elements.map(el => ({ clip: el.resolved.clip, element: el })),
+      this.canvas,
+      opts.composition.meta.width,
+      opts.composition.meta.height,
+    )
+
+    // Hide all elements — onFrame(0) will show the active ones
+    for (const el of this.elements) el.hide()
 
     // Fit canvas to container if requested
     if (opts.fitContainer !== false) this.applyFit()
@@ -140,7 +153,40 @@ export class BrowserRenderer {
     if (this.opts.fitContainer !== false) this.applyFit()
   }
 
+  /**
+   * Re-run SpatialAnchor position resolution after the browser has laid out elements.
+   * Elements are temporarily shown (removing display:none) so getBoundingClientRect
+   * returns real sizes. Call this from a requestAnimationFrame after construction.
+   */
+  resolveLayout(): void {
+    // Snapshot which elements are currently hidden
+    const wasHidden = this.elements.map(el =>
+      el.el.classList.contains('ce2-clip--hidden'),
+    )
+    // Temporarily show all so they are measurable
+    for (const el of this.elements) el.el.classList.remove('ce2-clip--hidden')
+
+    resolveClipPositions(
+      this.elements.map(el => ({ clip: el.resolved.clip, element: el })),
+      this.canvas,
+      this.opts.composition.meta.width,
+      this.opts.composition.meta.height,
+    )
+
+    // Restore hidden state
+    this.elements.forEach((el, i) => {
+      if (wasHidden[i]) el.el.classList.add('ce2-clip--hidden')
+    })
+
+    // Re-render current frame with corrected positions
+    this.onFrame(this.engine.currentFrame)
+  }
+
   destroy(): void {
+    if (this._layoutRaf !== null) {
+      cancelAnimationFrame(this._layoutRaf)
+      this._layoutRaf = null
+    }
     this.pauseAllMedia()
     for (const el of this.elements) el.destroy()
     this.engine.destroy()
@@ -272,7 +318,6 @@ export class BrowserRenderer {
         el = new TextElement(rc)
       }
 
-      el.hide()
       els.push(el)
     }
 

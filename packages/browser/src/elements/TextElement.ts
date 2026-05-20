@@ -11,17 +11,6 @@ function loadGoogleFont(family: string): void {
   document.head.appendChild(link)
 }
 
-const ANCHOR_FLEX: Record<string, { justify: string; align: string }> = {
-  'top-left':     { justify: 'flex-start', align: 'flex-start' },
-  'top':          { justify: 'center',     align: 'flex-start' },
-  'top-right':    { justify: 'flex-end',   align: 'flex-start' },
-  'left':         { justify: 'flex-start', align: 'center' },
-  'center':       { justify: 'center',     align: 'center' },
-  'right':        { justify: 'flex-end',   align: 'center' },
-  'bottom-left':  { justify: 'flex-start', align: 'flex-end' },
-  'bottom':       { justify: 'center',     align: 'flex-end' },
-  'bottom-right': { justify: 'flex-end',   align: 'flex-end' },
-}
 
 export class TextElement extends BaseElement {
   private inner: HTMLSpanElement
@@ -60,10 +49,10 @@ export class TextElement extends BaseElement {
     const tw = resolved.clip.attached_effects?.find(e => e.kind === 'text.typewriter')
     if (tw) {
       this.typewriterActive = true
-      this.fullText = this.payload.content
+      this.fullText = this.payload.content ?? ''
       this.inner.textContent = ''
     } else {
-      this.inner.textContent = this.payload.content
+      this.inner.textContent = this.payload.content ?? ''
     }
 
 
@@ -91,28 +80,10 @@ export class TextElement extends BaseElement {
   // ─── Private helpers ────────────────────────────────────────────────────────
 
   private applyLayout(): void {
-    const p   = this.payload as any
-    const pos = p.position
-    let key   = pos?.anchor ?? 'center'
-
-    // ZAVA preset position → OSS anchor
-    if (pos?.kind === 'preset') {
-      const MAP: Record<string, string> = {
-        'top-left':      'top-left',  'top-center':    'top',
-        'top-right':     'top-right', 'middle-left':   'left',
-        'middle-center': 'center',    'middle-right':  'right',
-        'bottom-left':   'bottom-left','bottom-center':'bottom',
-        'bottom-right':  'bottom-right',
-      }
-      key = MAP[pos.value] ?? 'center'
-    } else if (pos?.kind === 'xy') {
-      // x_pct: determines horizontal anchor; y_pct: becomes y offset from top
-      key = pos.x_pct < 30 ? 'top-left' : pos.x_pct > 70 ? 'top-right' : 'top'
-    }
-
-    const flex = ANCHOR_FLEX[key] ?? ANCHOR_FLEX['center']
-    this.el.style.justifyContent = flex.justify
-    this.el.style.alignItems     = flex.align
+    // Pozicionálás kizárólag clip.position (SpatialAnchor) alapján történik.
+    // A régi payload.position rendszer el lett távolítva.
+    this.el.style.justifyContent = 'center'
+    this.el.style.alignItems     = 'center'
   }
 
   private applyTextStyles(): void {
@@ -134,15 +105,5 @@ export class TextElement extends BaseElement {
     if (p.text_transform)  s.textTransform = p.text_transform
     if (p.max_width_pct)   s.maxWidth      = `${p.max_width_pct}%`
     if (p.text_align === 'left' && p.max_width_pct) s.textAlign = 'left'
-
-    // Position offset
-    let x = p.position?.x ?? 0
-    let y = p.position?.y ?? 0
-    // ZAVA xy position: y_pct → translate from top
-    if (p.position?.kind === 'xy') {
-      x = p.position.x_pct < 30 ? Math.round(p.position.x_pct / 100 * 1080) : 0
-      y = Math.round(p.position.y_pct / 100 * 1920)
-    }
-    if (x !== 0 || y !== 0) s.transform = `translate(${x}px, ${y}px)`
   }
 }

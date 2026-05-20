@@ -2,13 +2,15 @@
  * CE2 — Detail / Megjelenés tab.
  */
 import React from 'react'
-import type { Clip } from '@ce2/core'
+import type { Clip, CE2Composition } from '@ce2/core'
 import { Field, NumberInput, SelectInput, Section } from '../../primitives.js'
+import { ClipPositionPicker } from '../ClipPositionPicker.js'
 
 const isAudioLayer = (l: string) => ['music', 'narration', 'sfx'].includes(l)
 
 interface Props {
   clip: Clip
+  composition: CE2Composition
   onUpdate: (updater: (c: Clip) => Clip) => void
 }
 
@@ -23,7 +25,7 @@ const BLEND_MODES = [
   { value: 'hard-light', label: 'Hard light' },
 ]
 
-export const AppearanceTab: React.FC<Props> = ({ clip, onUpdate }) => {
+export const AppearanceTab: React.FC<Props> = ({ clip, composition, onUpdate }) => {
   if (isAudioLayer(clip.layer)) {
     return (
       <div className="text-xs text-gray-500 p-3 italic">
@@ -34,6 +36,15 @@ export const AppearanceTab: React.FC<Props> = ({ clip, onUpdate }) => {
 
   return (
     <>
+      <Section title="Pozíció (canvas)">
+        <ClipPositionPicker
+          clipId={clip.id}
+          value={(clip as any).position}
+          composition={composition}
+          onChange={(pos) => onUpdate((c) => ({ ...c, position: pos } as any))}
+        />
+      </Section>
+
       <Section title="Vizuális megjelenés">
         <Field label="Átlátszóság (opacity)" helper="0 = teljesen átlátszó, 1 = teljesen látható">
           <NumberInput
